@@ -26,14 +26,14 @@ usage:
 keyboard shortcuts:
 -------------------
 
-F7     - step into (s)
-F8     - step over (n)
-CTRL-B - set breakpoint at current line in codeview
-TAB    - circle focus
+- F7     - step into (s)
+- F8     - step over (n)
+- CTRL-B - set breakpoint at current line in codeview
+- TAB    - circle focus
 
-CTRL-Q - quit
-F1     - switch input applet mode to python or gdb repl
-these ones are likely to change in future versions.
+- CTRL-Q - quit
+- F1     - switch input applet mode to python or gdb repl
+these last ones are likely to change in future versions.
 
 TODO
 ----
