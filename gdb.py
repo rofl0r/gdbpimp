@@ -183,11 +183,12 @@ from prompt_toolkit.layout.containers import HSplit, VSplit, Window, ScrollOffse
 from prompt_toolkit.layout.controls import BufferControl, FormattedTextControl
 from prompt_toolkit.layout.layout import Layout
 from prompt_toolkit.application import get_app
-from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.key_binding import KeyBindings, merge_key_bindings
 from prompt_toolkit.layout.dimension import LayoutDimension, Dimension
 from prompt_toolkit.lexers import PygmentsLexer
 from prompt_toolkit.document import Document
 from prompt_toolkit.selection import SelectionState
+from prompt_toolkit.filters import Condition
 from pygments.lexers.c_cpp import CLexer
 from pygments.token import Token
 from prompt_toolkit.styles import Style, style_from_pygments_cls, style_from_pygments_dict
@@ -271,7 +272,7 @@ def sidebar(name, kvdict):
 				('class:sidebar', '\n'),
 			])
 		def append(index, label, status):
-			selected = False
+			selected = get_app().controls[name].selected_option_index == index
 			odd = 'odd' if index%2 != 0 else ''
 			sel = ',selected' if selected else ''
 			chg = ',changed' if kvdict().was_changed(label) else ''
@@ -279,11 +280,11 @@ def sidebar(name, kvdict):
 #			tokens.append(('class:sidebar.label' + odd + sel, ('%-' + str(_KEY_WIDTH) + 's') % label))
 			tokens.append(('class:sidebar.label' + odd + sel, pad_or_cut(label, _KEY_WIDTH)))
 #			tokens.append(('class:sidebar.status' + odd + sel, ' '))
-			tokens.append(('class:sidebar.status' + odd + sel + chg, '%s' % status))
+			tokens.append(('class:sidebar.status' + odd + sel + chg, pad_or_cut(status, _VAL_WIDTH)))
 			if selected:
 				tokens.append(('[SetCursorPosition]', ''))
-			tokens.append(('class:sidebar.status' + odd + sel, ' ' * (_VAL_WIDTH - len(status))))
-			tokens.append(('class:sidebar', '<' if selected else ''))
+#			tokens.append(('class:sidebar.status' + odd + sel, ' ' * (_VAL_WIDTH - len(status))))
+			tokens.append(('class:sidebar', '<' if selected else ' '))
 			tokens.append(('class:sidebar', '\n'))
 
 
@@ -302,15 +303,36 @@ def sidebar(name, kvdict):
 		return tokens
 
 	class Control(FormattedTextControl):
-		pass
-	return Window(
+		def move_cursor_down(self):
+			get_app().controls[name].selected_option_index += 1
+		def move_cursor_up(self):
+			get_app().controls[name].selected_option_index -= 1
+
+	ctrl =  Window(
 		Control(get_text_fragments),
 		style='class:sidebar',
 		width=Dimension.exact(_CTR_WIDTH+2),
 		height=Dimension(min=3),
 		scroll_offsets=ScrollOffsets(top=1, bottom=1))
+	ctrl.selected_option_index = 0
+	return ctrl
 
-
+def load_sidebar_bindings(name):
+	#sidebar_visible = Condition(lambda: config.show_sidebar)
+	sidebar_visible = Condition(lambda: True)
+	sidebar_focused = Condition(lambda: get_app().focused_control == name)
+	sidebar_handles_keys = sidebar_visible & sidebar_focused
+	bindings = KeyBindings()
+	handle = bindings.add
+	@handle('up', filter=sidebar_handles_keys)
+	def _(event):
+		event.app.controls[name].selected_option_index = (
+		(event.app.controls[name].selected_option_index - 1) % len(vars(event.app)[name]))
+	@handle('down', filter=sidebar_handles_keys)
+	def _(event):
+		event.app.controls[name].selected_option_index = (
+		(event.app.controls[name].selected_option_index + 1) % len(vars(event.app)[name]))
+	return bindings
 
 def setup_app(gdb):
 
@@ -499,7 +521,7 @@ def setup_app(gdb):
 		),
 		style=style,
 		full_screen=True,
-		key_bindings=kb,
+		key_bindings=merge_key_bindings([kb, load_sidebar_bindings('locals')]),
 	)
 	app.controls = controls
 	app.locals = OrderedDict()
@@ -627,6 +649,8 @@ def get_locals(app):
 				get_app().gdb.debug('xDDD ' + mv)
 				mv = hexify_string_literal(mv)
 				get_app().gdb.debug('xEEE ' + mv)
+			elif isnumeric(mv) and int(mv) > 0xffff:
+				mv = hex(int(mv))
 			elif 'out of bounds>' in v:
 				mv= '<OOB>'
 			mylocals[k] = (mv, v)
