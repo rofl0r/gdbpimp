@@ -44,7 +44,5 @@ TODO
   stepout functionality might require an additional dependency on `pycparser`.
 - nicer way to highlight the actual line in the codeview
   (optimally red bar over the entire line)
-- ability to select a single line in the locals view, which then shows
-  additional details of the variable in a 1-line-high control.
 - menu
 - ability to customize size of controls

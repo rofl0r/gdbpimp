@@ -179,7 +179,7 @@ def setup_gdb(gdb):
 from prompt_toolkit import Application
 from prompt_toolkit.buffer import Buffer
 from prompt_toolkit.widgets import TextArea, Label
-from prompt_toolkit.layout.containers import HSplit, VSplit, Window, ScrollOffsets
+from prompt_toolkit.layout.containers import HSplit, VSplit, Window, ScrollOffsets, ConditionalContainer
 from prompt_toolkit.layout.controls import BufferControl, FormattedTextControl
 from prompt_toolkit.layout.layout import Layout
 from prompt_toolkit.application import get_app
@@ -223,6 +223,8 @@ class OrderedDict():
 		self._changed = changed
 	def was_changed(self, key):
 		return self._changed is not None and key in self._changed
+	def get_value_by_index(self, index):
+		return self.values[self.order[index]]
 	def __len__(self):
 		if self.order is None: return 0
 		return len(self.order)
@@ -332,6 +334,13 @@ def load_sidebar_bindings(name):
 	def _(event):
 		event.app.controls[name].selected_option_index = (
 		(event.app.controls[name].selected_option_index + 1) % len(vars(event.app)[name]))
+	if name == 'locals':
+		@handle('enter', filter=sidebar_handles_keys)
+		def _(event):
+			if event.app.controls['vardetails'].text == '':
+				event.app.controls['vardetails'].text = \
+					event.app.locals.get_value_by_index(event.app.controls[name].selected_option_index)[1]
+			else: event.app.controls['vardetails'].text = ''
 	return bindings
 
 def setup_app(gdb):
@@ -404,9 +413,18 @@ def setup_app(gdb):
 		read_only = False,
 		style = u'class:input',
 	)
+	controls['vardetails'] = TextArea(
+		height=LayoutDimension(1, 4),
+		wrap_lines = True,
+		read_only = True,
+		style = u'class:vardetails',
+	)
+	def need_vardetails():
+		return get_app().controls['vardetails'].text != ''
 
 	controls['root_container'] = HSplit([
 		controls['header'],
+		ConditionalContainer(controls['vardetails'], Condition(need_vardetails)),
 		VSplit([
 			HSplit([
 				controls['codeview'],
@@ -494,6 +512,7 @@ def setup_app(gdb):
 		'input' : 'bg:#000000 #8888ff underline',
 		'input_label' : 'bg:#000000 #8888ff underline',
 		'header_label' : 'bg:#9999ff #000000 underline',
+		'vardetails' : 'bg:#000000 #8888ff',
 		'text-area.pfx' : 'bg:#aaaaaa #ff0000',
 		'text-area.pfx.selected' : 'bg:#ff0000 #ffffff',
 		'sidebar':                                'bg:#bbbbbb #000000',
