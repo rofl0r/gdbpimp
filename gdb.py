@@ -265,10 +265,10 @@ def sidebar(name, kvdict):
 		#import pdb
 		#pdb.set_trace()
 		def append_title(title):
+			foc = ',focused' if get_app().focused_control == name else ''
 			tokens.extend([
 				('class:sidebar', ' '),
-				('class:sidebar.title', center_str(title, _CTR_WIDTH)),
-#				('class:sidebar.title', (' %-'+_CTR_WIDTH_STR+'s')% title),
+				('class:sidebar.title'+foc, center_str(title, _CTR_WIDTH)),
 				('class:sidebar', '\n'),
 			])
 		def append(index, label, status):
@@ -498,6 +498,7 @@ def setup_app(gdb):
 		'text-area.pfx.selected' : 'bg:#ff0000 #ffffff',
 		'sidebar':                                'bg:#bbbbbb #000000',
 		'sidebar.title':                          'bg:#668866 #ffffff',
+		'sidebar.title focused':                  'bg:#000000 #ffffff bold',
 		'sidebar.label':                          'bg:#bbbbbb #222222',
 		'sidebar.status':                         'bg:#dddddd #000011',
 		'sidebar.labelodd':                      'bg:#bbbb00 #222222',
