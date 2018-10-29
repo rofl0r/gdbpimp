@@ -338,8 +338,8 @@ def load_sidebar_bindings(name):
 		@handle('enter', filter=sidebar_handles_keys)
 		def _(event):
 			if event.app.controls['vardetails'].text == '':
-				event.app.controls['vardetails'].text = \
-					event.app.locals.get_value_by_index(event.app.controls[name].selected_option_index)[1]
+				event.app.controls['vardetails'].text = 'X'
+				event.app.controls['vardetails'].update()
 			else: event.app.controls['vardetails'].text = ''
 	return bindings
 
@@ -419,6 +419,14 @@ def setup_app(gdb):
 		read_only = True,
 		style = u'class:vardetails',
 	)
+	def up_():
+		if get_app().controls['vardetails'].text != '':
+			get_app().controls['vardetails'].text = \
+				get_app().locals.get_value_by_index( \
+					get_app().controls['locals'].selected_option_index \
+				)[1]
+	controls['vardetails'].update = up_
+
 	def need_vardetails():
 		return get_app().controls['vardetails'].text != ''
 
@@ -500,11 +508,13 @@ def setup_app(gdb):
 		#open('logf', 'w').write(str(dir(event.app)))
 		run_gdb_cmd(event.app, 's')
 		get_locals(event.app)
+		event.app.controls['vardetails'].update()
 	@kb.add(u'f8')
 	def shift_feight_(event):
 		#open('logf', 'w').write(str(dir(event.app)))
 		run_gdb_cmd(event.app, 'n')
 		get_locals(event.app)
+		event.app.controls['vardetails'].update()
 
 	styledict = {
 		'gdbout':'bg:#000000 #888888',
