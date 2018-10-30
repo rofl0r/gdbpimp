@@ -468,7 +468,6 @@ def setup_app(gdb):
 	@kb.add(u'f5')
 	def eff_five_(event):
 		run_gdb_cmd(event.app, 'c')
-		get_locals(event.app)
 	@kb.add(u'f7')
 	def _(event):
 		run_gdb_cmd(event.app, 's')
