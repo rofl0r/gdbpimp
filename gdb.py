@@ -187,7 +187,7 @@ from prompt_toolkit.selection import SelectionState
 from prompt_toolkit.filters import Condition
 from pygments.lexers.c_cpp import CLexer
 from pygments.token import Token
-from prompt_toolkit.styles import Style, style_from_pygments_cls, style_from_pygments_dict
+from prompt_toolkit.styles import Style, style_from_pygments_cls, style_from_pygments_dict, merge_styles
 from pygments.styles import get_style_by_name
 
 class OrderedDict():
@@ -355,7 +355,7 @@ def setup_app(gdb):
 		wrap_lines = True,
 		get_line_prefix = codeview_line_prefix,
 		lexer=PygmentsLexer(CLexer),
-#		style = style,
+		style = u'class:codeview',
 	)
 	controls['gdbout'] = TextArea(
 		text = u'',
@@ -498,12 +498,12 @@ def setup_app(gdb):
 		'sidebar.status changed':                'bg:#dddddd #ff0000 bold',
 	}
 
-	if False: # for some reason the keys into that dict are objects, not strings.
-		pyg_style = get_style_by_name(u'borland').styles
-		for x in pyg_style:
-			styledict[x] = pyg_style[x]
+	pyg_style = style_from_pygments_cls(get_style_by_name(u'borland'))
 
-	style = Style.from_dict(styledict)
+	style = merge_styles([
+		Style.from_dict(styledict),
+		pyg_style,
+	])
 
 	app = Application(
 		layout = Layout(
