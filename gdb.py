@@ -187,8 +187,8 @@ from prompt_toolkit.selection import SelectionState
 from prompt_toolkit.filters import Condition
 from pygments.lexers.c_cpp import CLexer
 from pygments.token import Token
-from prompt_toolkit.styles import Style, style_from_pygments_cls, style_from_pygments_dict, merge_styles
-from pygments.styles import get_style_by_name
+from prompt_toolkit.styles import Style, style_from_pygments_cls, merge_styles
+from editor_style import CodeviewStyle
 
 class OrderedDict():
 	def __init__(self):
@@ -498,7 +498,7 @@ def setup_app(gdb):
 		'sidebar.status changed':                'bg:#dddddd #ff0000 bold',
 	}
 
-	pyg_style = style_from_pygments_cls(get_style_by_name(u'borland'))
+	pyg_style = style_from_pygments_cls(CodeviewStyle)
 
 	style = merge_styles([
 		Style.from_dict(styledict),
