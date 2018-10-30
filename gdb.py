@@ -30,6 +30,7 @@ class GDB():
 		self.cached_stdout = s
 		self.cached_stderr = t
 	def add_bp(self, file, line):
+		file = self.find_sourcefile(file)
 		if not file in self.breakpoints: self.breakpoints[file] = []
 		self.breakpoints[file].append(line)
 	def _set_exit_code(self, ec):
@@ -41,14 +42,16 @@ class GDB():
 			s += self.proc.stdout().read(1)
 		lines = s.split('\n')
 		self.sources = lines[2].split(', ')
-
+	def set_sourcefile(self, file):
+		self.sourcefile = file
 	def find_sourcefile(self, file):
 		if not extract_filename(self.sourcefile) == file:
 			self._reload_sources()
-		for s in self.sources:
-			if extract_filename(s) == file:
-				self.sourcefile = s
-				break
+			for s in self.sources:
+				if extract_filename(s) == file:
+					return s
+			return ''
+		else: return self.sourcefile
 
 	def _consume_cached(self, which):
 		if which == 'stdout':
@@ -96,17 +99,17 @@ class GDB():
 				self.debug(repr(a))
 				file = None
 				if le.find(':') == -1:
-					pass
-					"""
 					# dont have a file:lineno tuple at the end, it's the confirmation a breakpoint has been set
 					if len(a) > 4 and a[-4] == u'file' and a[-2] == u'line':
 						file = a[-3][:-1]
 						lineno = a[-1][:-1]
-					"""
+					if not l.startswith('Temporary'):
+						self.add_bp(file, int(lineno))
+					file = None
 				else:
 					file, lineno = le.split(':')
 				if file is not None:
-					self.find_sourcefile(file)
+					self.set_sourcefile(self.find_sourcefile(file))
 					self.lineno = int(lineno)
 
 		t = self._consume_cached('stderr')
@@ -464,7 +467,6 @@ def setup_app(gdb):
 			line, col = c.document.translate_index_to_position(c.document.cursor_position)
 			line += 1
 			run_gdb_cmd(event.app, 'b %s:%d'%(event.app.gdb.sourcefile, line))
-			event.app.gdb.add_bp(app.gdb.sourcefile, line)
 	@kb.add(u'f5')
 	def eff_five_(event):
 		run_gdb_cmd(event.app, 'c')
@@ -561,7 +563,7 @@ def run_gdb_cmd(app, cmd, hide=False):
 			if isnumeric(a[0]): app.gdb.lineno = int(a[0])
 			elif ':' in a[-1]:
 				file, lineno = a[-1].split(':')
-				app.gdb.find_sourcefile(file)
+				app.gdb.set_sourcefile(app.gdb.find_sourcefile(file))
 				debug(app, app.gdb.sourcefile)
 				if isnumeric(lineno): app.gdb.lineno = int(lineno)
 	if app.gdb.istdout_canread():
@@ -569,7 +571,7 @@ def run_gdb_cmd(app, cmd, hide=False):
 		scroll_down(app.controls['inferiorout'])
 	if not app.gdb.sourcefile == oldsrc:
 		load_source(app)
-	if app.gdb.lineno != -1:
+	if not cmd.startswith('b ') and app.gdb.lineno != -1:
 		codeview_set_line(app.controls['codeview'], app.gdb.lineno)
 	if cmd in _STEP_COMMANDS:
 		get_locals(app)
