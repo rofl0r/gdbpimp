@@ -466,7 +466,10 @@ def setup_app(gdb):
 			focus(event.app, 'input')
 			return
 		if event.app.input_gdb:
-			run_gdb_cmd(event.app, event.app.controls['input'].text)
+			cmd = event.app.controls['input'].text
+			if not len(cmd): cmd = event.app.last_gdb_cmd
+			else: event.app.last_gdb_cmd = cmd
+			run_gdb_cmd(event.app, cmd)
 			if event.app.controls['input'].text == 'q':
 				event.app.exit()
 			get_app().gdb.debug('XXX ' + event.app.controls['input'].text)
@@ -504,17 +507,11 @@ def setup_app(gdb):
 		run_gdb_cmd(event.app, 'c')
 		get_locals(event.app)
 	@kb.add(u'f7')
-	def feight_(event):
-		#open('logf', 'w').write(str(dir(event.app)))
+	def _(event):
 		run_gdb_cmd(event.app, 's')
-		get_locals(event.app)
-		event.app.controls['vardetails'].update()
 	@kb.add(u'f8')
-	def shift_feight_(event):
-		#open('logf', 'w').write(str(dir(event.app)))
+	def _(event):
 		run_gdb_cmd(event.app, 'n')
-		get_locals(event.app)
-		event.app.controls['vardetails'].update()
 
 	styledict = {
 		'gdbout':'bg:#000000 #888888',
@@ -556,6 +553,7 @@ def setup_app(gdb):
 	app.controls = controls
 	app.locals = OrderedDict()
 	app.gdb = gdb
+	app.last_gdb_cmd = ''
 	app.input_gdb = True
 	app.focus_list = ['input', 'codeview', 'gdbout', 'locals']
 	app.focused_control = 'input'
@@ -599,12 +597,13 @@ def codeview_set_sel(codeview, lineno):
 	new_doc = Document(text = codeview.text, cursor_position = se, selection=sel)
 	codeview.document = new_doc
 """
+_STEP_COMMANDS = ['n','s','c','next','step','continue']
 def run_gdb_cmd(app, cmd, hide=False):
 	oldsrc = app.gdb.sourcefile
 	app.gdb.send(cmd)
 	s, t = app.gdb.read()
 	if not hide: add_gdbview_text(app, s + t)
-	if cmd == 'n' or cmd == 's':
+	if cmd in _STEP_COMMANDS:
 		for line in s.split('\n'):
 			a = line.replace('\t', ' ').split(' ')
 			#debug(app, prepare_text(repr(a)))
@@ -624,6 +623,9 @@ def run_gdb_cmd(app, cmd, hide=False):
 	if app.gdb.lineno != -1:
 		codeview_set_line(app.controls['codeview'], app.gdb.lineno)
 		#codeview_set_sel(app.controls['codeview'], app.gdb.lineno)
+	if cmd in _STEP_COMMANDS:
+		get_locals(app)
+		app.controls['vardetails'].update()
 	return s,t
 
 """
