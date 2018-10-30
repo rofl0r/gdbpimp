@@ -34,16 +34,12 @@ class GDB():
 		self.breakpoints[file].append(line)
 	def _set_exit_code(self, ec):
 		self.proc.exitcode = ec
-		#self.proc.stdout().close()
-		#self.proc.stderr().close()
-
 	def _reload_sources(self):
 		self.send('info sources')
 		s = self.proc.stdout().read(1) #''
 		while self.proc.canread(self.proc.stdout()):
 			s += self.proc.stdout().read(1)
 		lines = s.split('\n')
-		#open('debug.log', 'w').write(str(repr(lines)))
 		self.sources = lines[2].split(', ')
 
 	def find_sourcefile(self, file):
@@ -71,7 +67,6 @@ class GDB():
 		self.debugf.write(text + '\n')
 	def read(self):
 		if self.get_exitcode() is not None: return '', ''
-		#s, t = self.proc.read_until(self.proc.stdout(), "(gdb) ")
 		s = self._consume_cached('stdout')
 		#s += self.proc.stdout().read(1)
 		while self.proc.canread(self.proc.stdout()):
@@ -95,7 +90,6 @@ class GDB():
 		for l in lines:
 			self.debug('L ' + l)
 			if l.startswith('Breakpoint ') or l.startswith('Temporary breakpoint '):
-				#debug('XXX')
 				a = l.split(' ')
 				le = a[-1]
 				self.debug(repr(a))
@@ -119,7 +113,7 @@ class GDB():
 			t += self.proc.stderr().read(1)
 		lines = t.split('\n')
 		for l in lines:
-			self.debug('E ' + l)
+			if len(l): self.debug('E ' + l)
 			if l.startswith('During symbol reading, incomplete CFI data'):
 				self._set_exit_code(-1)
 			if l.startswith('Cannot find bounds of current function'):
@@ -171,8 +165,6 @@ def setup_gdb(gdb):
 	s, t = gdb.read()
 	o += s
 	o += t
-#	print s
-#	print t
 	return o
 
 
@@ -200,7 +192,6 @@ class OrderedDict():
 		self.order = None
 		self._changed = None
 	def update(self, values):
-		#assert isinstance(values, dict)
 		if self.order is None or len(self.order) == 0:
 			self.order = sorted(values.keys())
 			self.values = values
@@ -264,8 +255,6 @@ def sidebar(name, kvdict):
 
 	def get_text_fragments():
 		tokens = []
-		#import pdb
-		#pdb.set_trace()
 		def append_title(title):
 			foc = ',focused' if get_app().focused_control == name else ''
 			tokens.extend([
@@ -279,13 +268,10 @@ def sidebar(name, kvdict):
 			sel = ',selected' if selected else ''
 			chg = ',changed' if kvdict().was_changed(label) else ''
 			tokens.append(('class:sidebar' + sel, '>' if selected else ' '))
-#			tokens.append(('class:sidebar.label' + odd + sel, ('%-' + str(_KEY_WIDTH) + 's') % label))
 			tokens.append(('class:sidebar.label' + odd + sel, pad_or_cut(label, _KEY_WIDTH)))
-#			tokens.append(('class:sidebar.status' + odd + sel, ' '))
 			tokens.append(('class:sidebar.status' + odd + sel + chg, pad_or_cut(status, _VAL_WIDTH)))
 			if selected:
 				tokens.append(('[SetCursorPosition]', ''))
-#			tokens.append(('class:sidebar.status' + odd + sel, ' ' * (_VAL_WIDTH - len(status))))
 			tokens.append(('class:sidebar', '<' if selected else ' '))
 			tokens.append(('class:sidebar', '\n'))
 
@@ -293,15 +279,11 @@ def sidebar(name, kvdict):
 		i = 0
 		append_title(name)
 		mydict = kvdict() if callable(kvdict) else kvdict
-		get_app().gdb.debug('CCCCCC' + str(repr(mydict)))
 		for key in mydict:
 			values = mydict[key]
 			append(i, key, '%s' % values[0])
 			i += 1
 		tokens.pop()  # Remove last newline.
-
-		get_app().gdb.debug('CCCCCC' + str(repr(tokens)))
-
 		return tokens
 
 	class Control(FormattedTextControl):
@@ -357,10 +339,6 @@ def setup_app(gdb):
 
 	controls = {}
 
-	#style = Style.from_dict(get_style_by_name(u'borland').styles),
-	#style = style_from_pygments_dict(get_style_by_name(u'monokai').styles)
-#	style = style_from_pygments_cls(get_style_by_name(u'monokai'))
-
 	controls['header'] = Label(
 		text = u'',
 		style = u'class:header_label',
@@ -370,7 +348,6 @@ def setup_app(gdb):
 		read_only = True,
 		scrollbar = True,
 		line_numbers = True,
-		#wrap_lines = False,
 		wrap_lines = True,
 		get_line_prefix = codeview_line_prefix,
 		lexer=PygmentsLexer(CLexer),
@@ -392,15 +369,6 @@ def setup_app(gdb):
 		style = u'class:inferiorout',
 		height = LayoutDimension(1, 16, preferred=1),
 	)
-	"""
-	controls['locals'] = TextArea(
-		text = u'',
-		read_only = True,
-		scrollbar = True,
-		width = LayoutDimension(16, 32),
-		dont_extend_width=True,
-	)
-	"""
 	controls['locals'] = sidebar('locals', lambda : get_app().locals)
 	controls['input_label'] = Label(
 		text = u'(gdb) ',
@@ -472,27 +440,22 @@ def setup_app(gdb):
 			run_gdb_cmd(event.app, cmd)
 			if event.app.controls['input'].text == 'q':
 				event.app.exit()
-			get_app().gdb.debug('XXX ' + event.app.controls['input'].text)
 		else:
-#			try: add_gdbview_text(event.app, str(eval(event.app.controls['input'].text)) + '\n')
 			try: app.console.runsource(event.app.controls['input'].text)
 			except Exception as e:
 				import traceback
 				add_gdbview_text(event.app, traceback.format_exc())
 		event.app.controls['input'].text = u''
-		#debug(event.app, "got enter")
 
 	@kb.add(u'tab')
 	def enter_(event):
 		for i in xrange(len(event.app.focus_list)):
-			#if event.app.layout.current_control.buffer is event.app.controls[event.app.focus_list[i]].buffer:
 			if event.app.focus_list[i] == event.app.focused_control:
 				next_focus = i+1
 				if next_focus >= len(event.app.focus_list):
 					next_focus = 0
 				focus(event.app, event.app.focus_list[next_focus])
 				break
-#		event.app.layout.focus_next()
 	@kb.add(u'c-b')
 	def cb_(event):
 		if event.app.focused_control == 'codeview':
@@ -501,7 +464,6 @@ def setup_app(gdb):
 			line += 1
 			run_gdb_cmd(event.app, 'b %s:%d'%(event.app.gdb.sourcefile, line))
 			event.app.gdb.add_bp(app.gdb.sourcefile, line)
-			#debug(event.app, str(line))
 	@kb.add(u'f5')
 	def eff_five_(event):
 		run_gdb_cmd(event.app, 'c')
@@ -585,18 +547,8 @@ def add_gdbview_text(app, text):
 
 def codeview_set_line(ctrl, lineno):
 	height = ctrl.window.render_info.last_visible_line() - ctrl.window.render_info.first_visible_line()
-	get_app().gdb.debug("CH: %d"%height)
 	scroll_to(ctrl, lineno + height/2)
 
-"""
-def codeview_set_sel(codeview, lineno):
-	ss = codeview.document.translate_row_col_to_index(lineno+1, 0)
-	se = codeview.document.translate_row_col_to_index(lineno+2, 0)
-	get_app().gdb.debug("ss/se %d:%d\n"%(ss,se))
-	sel = SelectionState(ss, type='CHARACTERS')
-	new_doc = Document(text = codeview.text, cursor_position = se, selection=sel)
-	codeview.document = new_doc
-"""
 _STEP_COMMANDS = ['n','s','c','next','step','continue']
 def run_gdb_cmd(app, cmd, hide=False):
 	oldsrc = app.gdb.sourcefile
@@ -606,15 +558,12 @@ def run_gdb_cmd(app, cmd, hide=False):
 	if cmd in _STEP_COMMANDS:
 		for line in s.split('\n'):
 			a = line.replace('\t', ' ').split(' ')
-			#debug(app, prepare_text(repr(a)))
 			if isnumeric(a[0]): app.gdb.lineno = int(a[0])
-			else: #if '.c:' in a[-1]:
-				#debug(app, "inside: " + repr(a))
-				if ':' in a[-1]:
-					file, lineno = a[-1].split(':')
-					app.gdb.find_sourcefile(file)
-					debug(app, app.gdb.sourcefile)
-					if isnumeric(lineno): app.gdb.lineno = int(lineno)
+			elif ':' in a[-1]:
+				file, lineno = a[-1].split(':')
+				app.gdb.find_sourcefile(file)
+				debug(app, app.gdb.sourcefile)
+				if isnumeric(lineno): app.gdb.lineno = int(lineno)
 	if app.gdb.istdout_canread():
 		app.controls['inferiorout'].text += prepare_text(os.read(app.gdb.istdout(), 1024*4))
 		scroll_down(app.controls['inferiorout'])
@@ -622,22 +571,10 @@ def run_gdb_cmd(app, cmd, hide=False):
 		load_source(app)
 	if app.gdb.lineno != -1:
 		codeview_set_line(app.controls['codeview'], app.gdb.lineno)
-		#codeview_set_sel(app.controls['codeview'], app.gdb.lineno)
 	if cmd in _STEP_COMMANDS:
 		get_locals(app)
 		app.controls['vardetails'].update()
 	return s,t
-
-"""
-def render_locals(app):
-	lst = []
-	for x in app.gdb.locals:
-		lst.append(x + ': ' + app.gdb.locals[x])
-	lst = sorted(lst)
-	s = u''
-	for l in lst: s += l + '\n'
-	app.controls['locals'].text = s
-"""
 
 def oct_to_hex(s):
 	foo = int(s[1:], 8)
@@ -671,24 +608,18 @@ def get_locals(app):
 			b = tokenizer.split_tokens(v)
 			mv = b[-1]
 			if mv[0] == "'" and len(mv) > 3: # turn gdb's gay octal literals into hex
-				get_app().gdb.debug('xAAA ' + v+ ":::" + mv)
 				charval = mv[1:-1]
-				get_app().gdb.debug('xBBB ' + repr(charval))
 				if charval[0] == '\\' and isnumeric(charval[1]):
 					foo = int(charval[1:], 8)
 					mv = "'\\x" + chr(foo).encode('hex') + "'"
 			elif mv[0] == '"':
-				get_app().gdb.debug('xDDD ' + mv)
 				mv = hexify_string_literal(mv)
-				get_app().gdb.debug('xEEE ' + mv)
 			elif isnumeric(mv) and int(mv) > 0xffff:
 				mv = hex(int(mv))
 			elif 'out of bounds>' in v:
 				mv= '<OOB>'
 			mylocals[k] = (mv, v)
 	app.locals.update(mylocals)
-	#app.locals = mylocals
-	#render_locals(app)
 
 def scroll_down(control):
 	set_lineno(control, count_char(control.text, '\n')+1)
@@ -718,7 +649,7 @@ if __name__ == '__main__':
 	scroll_down(app.controls['gdbout'])
 	load_source(app)
 
-	app.run() # You won't be able to Exit this app
+	app.run()
 
 	import sys
 	sys.exit(gdb.get_exitcode())
