@@ -65,6 +65,7 @@ class GDB():
 		return self.proc.canread(self.pty_master)
 	def debug(self, text):
 		self.debugf.write(text + '\n')
+		self.debugf.flush()
 	def read(self):
 		if self.get_exitcode() is not None: return '', ''
 		s = self._consume_cached('stdout')
