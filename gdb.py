@@ -219,7 +219,9 @@ class OrderedDict():
 	def was_changed(self, key):
 		return self._changed is not None and key in self._changed
 	def get_value_by_index(self, index):
-		return self.values[self.order[index]]
+		if index < len(self):
+			return self[self.order[index]]
+		return None
 	def __len__(self):
 		if self.order is None: return 0
 		return len(self.order)
@@ -228,7 +230,9 @@ class OrderedDict():
 		for x in xrange(len(self.order)):
 			yield self.order[x]
 	def __getitem__(self, index):
-		return self.values[index]
+		if index in self.values:
+			return self.values[index]
+		return None
 
 
 def sidebar(name, kvdict):
@@ -392,11 +396,13 @@ def setup_app(gdb):
 		style = u'class:vardetails',
 	)
 	def up_():
-		if get_app().controls['vardetails'].text != '':
-			get_app().controls['vardetails'].text = \
-				get_app().locals.get_value_by_index( \
-					get_app().controls['locals'].selected_option_index \
-				)[1]
+		val = get_app().locals.get_value_by_index( \
+			get_app().controls['locals'].selected_option_index)
+		text = get_app().controls['vardetails'].text
+		if val is None and text != '':
+			get_app().controls['vardetails'].text = '<out of scope>'
+		elif text != '':
+			get_app().controls['vardetails'].text = val[1]
 	controls['vardetails'].update = up_
 
 	def need_vardetails():
