@@ -185,6 +185,7 @@ from prompt_toolkit.lexers import PygmentsLexer
 from prompt_toolkit.document import Document
 from prompt_toolkit.selection import SelectionState
 from prompt_toolkit.filters import Condition
+from prompt_toolkit.history import InMemoryHistory
 from pygments.lexers.c_cpp import CLexer
 from pygments.token import Token
 from prompt_toolkit.styles import Style, style_from_pygments_cls, merge_styles
@@ -333,6 +334,18 @@ def load_sidebar_bindings(name):
 			else: event.app.controls['vardetails'].text = ''
 	return bindings
 
+def load_inputbar_bindings():
+	inputbar_focused = Condition(lambda: get_app().focused_control == 'input')
+	bindings = KeyBindings()
+	handle = bindings.add
+	@handle('up', filter=inputbar_focused)
+	def _(event):
+		event.app.controls['input'].content.buffer.auto_up()
+	@handle('down', filter=inputbar_focused)
+	def _(event):
+		event.app.controls['input'].content.buffer.auto_down()
+	return bindings
+
 def setup_app(gdb):
 
 	def codeview_line_prefix(line_number, wrap_count):
@@ -383,10 +396,18 @@ def setup_app(gdb):
 		style = u'class:input_label',
 		width = LayoutDimension.exact(6),
 	)
-	controls['input'] = TextArea(
+	controls['input'] = Window(
+		content=BufferControl(
+			buffer=Buffer(
+				read_only = False,
+				multiline = False,
+				history = InMemoryHistory(),
+			),
+			focusable = True,
+			focus_on_click=True,
+		),
 		height=LayoutDimension.exact(1),
 		dont_extend_height=True,
-		read_only = False,
 		style = u'class:input',
 	)
 	controls['vardetails'] = TextArea(
@@ -444,18 +465,18 @@ def setup_app(gdb):
 			focus(event.app, 'input')
 			return
 		if event.app.input_gdb:
-			cmd = event.app.controls['input'].text
+			cmd = event.app.controls['input'].content.buffer.text
 			if not len(cmd): cmd = event.app.last_gdb_cmd
 			else: event.app.last_gdb_cmd = cmd
 			run_gdb_cmd(event.app, cmd)
-			if event.app.controls['input'].text == 'q':
+			if event.app.controls['input'].content.buffer.text == 'q':
 				event.app.exit()
 		else:
-			try: app.console.runsource(event.app.controls['input'].text)
+			try: app.console.runsource(event.app.controls['input'].content.buffer.text)
 			except Exception as e:
 				import traceback
 				add_gdbview_text(event.app, traceback.format_exc())
-		event.app.controls['input'].text = u''
+		event.app.controls['input'].content.buffer.reset(append_to_history=True)
 
 	@kb.add(u'tab')
 	def enter_(event):
@@ -518,7 +539,11 @@ def setup_app(gdb):
 		),
 		style=style,
 		full_screen=True,
-		key_bindings=merge_key_bindings([kb, load_sidebar_bindings('locals')]),
+		key_bindings=merge_key_bindings([
+			kb,
+			load_sidebar_bindings('locals'),
+			load_inputbar_bindings(),
+		]),
 	)
 	app.controls = controls
 	app.locals = OrderedDict()
