@@ -499,8 +499,8 @@ def setup_app(gdb):
 			return
 		if event.app.input_gdb:
 			cmd = event.app.my.controls['input'].content.buffer.text
-			if not len(cmd): cmd = event.app.last_gdb_cmd
-			else: event.app.last_gdb_cmd = cmd
+			if not len(cmd): cmd = event.app.my.last_gdb_cmd
+			else: event.app.my.last_gdb_cmd = cmd
 			run_gdb_cmd(event.app, cmd)
 			if event.app.my.controls['input'].content.buffer.text == 'q':
 				event.app.exit()
@@ -592,7 +592,7 @@ def setup_app(gdb):
 
 	app.locals = OrderedDict()
 	app.my.gdb = gdb
-	app.last_gdb_cmd = ''
+	app.my.last_gdb_cmd = ''
 	app.input_gdb = True
 	app.focus_list = ['input', 'codeview', 'inferiorout', 'gdbout', 'locals']
 	app.focused_control = 'input'
