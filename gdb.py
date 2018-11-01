@@ -558,6 +558,7 @@ def setup_app(gdb):
 		'sidebar.label selected':                 'bg:#222222 #eeeeee',
 		'sidebar.status selected':                'bg:#444444 #ffffff bold',
 		'sidebar.status changed':                'bg:#dddddd #ff0000 bold',
+		'sidebar.statusodd changed':              'bg:#dddd00 #ff0000 bold',
 	}
 
 	pyg_style = style_from_pygments_cls(CodeviewStyle)
