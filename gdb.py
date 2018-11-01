@@ -235,6 +235,15 @@ class OrderedDict():
 			return self.values[index]
 		return None
 
+from prompt_toolkit.mouse_events import MouseEventType
+def if_mousedown(handler):
+	def handle_if_mouse_down(mouse_event):
+		if mouse_event.event_type == MouseEventType.MOUSE_DOWN:
+			return handler(mouse_event)
+		else:
+			return NotImplemented
+	return handle_if_mouse_down
+
 
 def sidebar(name, kvdict):
 	# shamelessly stolen and adapted from ptpython/layout.py
@@ -273,12 +282,24 @@ def sidebar(name, kvdict):
 			])
 		def append(index, label, status):
 			selected = get_app().controls[name].selected_option_index == index
+
+			@if_mousedown
+			def select_item(mouse_event):
+				get_app().set_focus(name)
+				get_app().controls[name].selected_option_index = index
+
+			@if_mousedown
+			def trigger_vardetail(mouse_event):
+				get_app().set_focus(name)
+				get_app().controls[name].selected_option_index = index
+				vardetails_toggle_on_off()
+
 			odd = 'odd' if index%2 != 0 else ''
 			sel = ',selected' if selected else ''
 			chg = ',changed' if kvdict().was_changed(label) else ''
 			tokens.append(('class:sidebar' + sel, '>' if selected else ' '))
-			tokens.append(('class:sidebar.label' + odd + sel, pad_or_cut(label, _KEY_WIDTH)))
-			tokens.append(('class:sidebar.status' + odd + sel + chg, pad_or_cut(status, _VAL_WIDTH)))
+			tokens.append(('class:sidebar.label' + odd + sel, pad_or_cut(label, _KEY_WIDTH), select_item))
+			tokens.append(('class:sidebar.status' + odd + sel + chg, pad_or_cut(status, _VAL_WIDTH), trigger_vardetail))
 			if selected:
 				tokens.append(('[SetCursorPosition]', ''))
 			tokens.append(('class:sidebar', '<' if selected else ' '))
@@ -310,6 +331,13 @@ def sidebar(name, kvdict):
 	ctrl.selected_option_index = 0
 	return ctrl
 
+def vardetails_toggle_on_off():
+	app = get_app()
+	if app.controls['vardetails'].text == '':
+		app.controls['vardetails'].text = 'X'
+		app.controls['vardetails'].update()
+	else: app.controls['vardetails'].text = ''
+
 def load_sidebar_bindings(name):
 	#sidebar_visible = Condition(lambda: config.show_sidebar)
 	sidebar_visible = Condition(lambda: True)
@@ -328,10 +356,7 @@ def load_sidebar_bindings(name):
 	if name == 'locals':
 		@handle('enter', filter=sidebar_handles_keys)
 		def _(event):
-			if event.app.controls['vardetails'].text == '':
-				event.app.controls['vardetails'].text = 'X'
-				event.app.controls['vardetails'].update()
-			else: event.app.controls['vardetails'].text = ''
+			vardetails_toggle_on_off()
 	return bindings
 
 def load_inputbar_bindings():
@@ -373,6 +398,8 @@ def setup_app(gdb):
 		get_line_prefix = codeview_line_prefix,
 		lexer=PygmentsLexer(CLexer),
 		style = u'class:codeview',
+		focusable = True,
+		focus_on_click=True,
 	)
 	controls['gdbout'] = TextArea(
 		text = u'',
@@ -381,6 +408,8 @@ def setup_app(gdb):
 		wrap_lines = False,
 		style = u'class:gdbout',
 		height = LayoutDimension(4, 16, preferred=8),
+		focusable = True,
+		focus_on_click=True,
 	)
 	controls['inferiorout'] = TextArea(
 		text = u'',
@@ -389,6 +418,8 @@ def setup_app(gdb):
 		wrap_lines = False,
 		style = u'class:inferiorout',
 		height = LayoutDimension(1, 16, preferred=1),
+		focusable = True,
+		focus_on_click=True,
 	)
 	controls['locals'] = sidebar('locals', lambda : get_app().locals)
 	controls['input_label'] = Label(
@@ -455,14 +486,10 @@ def setup_app(gdb):
 		event.app.input_gdb = not event.app.input_gdb
 		event.app.controls['input_label'].text = '(gdb) ' if event.app.input_gdb else '>>> '
 
-	def focus(app, cname):
-		app.layout.focus(app.controls[cname])
-		app.focused_control = cname
-
 	@kb.add(u'enter')
 	def enter_(event):
 		if event.app.focused_control != 'input':
-			focus(event.app, 'input')
+			event.app.set_focus('input')
 			return
 		if event.app.input_gdb:
 			cmd = event.app.controls['input'].content.buffer.text
@@ -485,7 +512,7 @@ def setup_app(gdb):
 				next_focus = i+1
 				if next_focus >= len(event.app.focus_list):
 					next_focus = 0
-				focus(event.app, event.app.focus_list[next_focus])
+				event.app.set_focus(event.app.focus_list[next_focus])
 				break
 	@kb.add(u'c-b')
 	def cb_(event):
@@ -544,6 +571,7 @@ def setup_app(gdb):
 			load_sidebar_bindings('locals'),
 			load_inputbar_bindings(),
 		]),
+		mouse_support = True,
 	)
 	app.controls = controls
 	app.locals = OrderedDict()
@@ -552,7 +580,10 @@ def setup_app(gdb):
 	app.input_gdb = True
 	app.focus_list = ['input', 'codeview', 'gdbout', 'locals']
 	app.focused_control = 'input'
-
+	def _set_focus(cname):
+		app.layout.focus(app.controls[cname])
+		app.focused_control = cname
+	app.set_focus = _set_focus
 	app_console_writefunc = lambda x: add_gdbview_text(get_app(), x)
 	app.console = py_console.Shell(locals=globals(), writefunc=app_console_writefunc)
 
