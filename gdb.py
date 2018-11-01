@@ -539,6 +539,12 @@ def setup_app(gdb):
 	def _(event):
 		run_gdb_cmd(event.app, 'n')
 
+	@kb.add(u'f2')
+	def _(event):
+		# we need to have the ability to turn mouse off to use the X11
+		# clipboard (selection needs to be handled by X11, not the app)
+		get_app().my.mouse_enabled = not get_app().my.mouse_enabled
+
 	styledict = {
 		'gdbout':'bg:#000000 #888888',
 		'inferiorout':'bg:#330000 #888888',
@@ -568,6 +574,9 @@ def setup_app(gdb):
 		pyg_style,
 	])
 
+	@Condition
+	def _is_mouse_active():
+		return get_app().my.mouse_enabled
 	app = Application(
 		layout = Layout(
 			controls['root_container'],
@@ -580,10 +589,11 @@ def setup_app(gdb):
 			load_sidebar_bindings('locals'),
 			load_inputbar_bindings(),
 		]),
-		mouse_support = True,
+		mouse_support = _is_mouse_active,
 	)
 	class My(): pass
 	app.my = My()
+	app.my.mouse_enabled = True
 	app.my.controls = controls
 	app.my.control_to_name_mapping = {}
 	for name in controls:
