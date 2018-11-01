@@ -382,9 +382,9 @@ def setup_app(gdb):
 	def codeview_line_prefix(line_number, wrap_count):
 		try:
 			if False: pass
-			elif line_number +1 == get_app().gdb.lineno:
+			elif line_number +1 == get_app().my.gdb.lineno:
 				return [('class:text-area.pfx,selected', '>')]
-			elif get_app().gdb.sourcefile in get_app().gdb.breakpoints and line_number+1 in get_app().gdb.breakpoints[get_app().gdb.sourcefile]:
+			elif get_app().my.gdb.sourcefile in get_app().my.gdb.breakpoints and line_number+1 in get_app().my.gdb.breakpoints[get_app().my.gdb.sourcefile]:
 				return [('class:text-area.pfx.bp', 'o')]
 		except: pass
 		return [('class:text-area.pfx', ' ')]
@@ -526,7 +526,7 @@ def setup_app(gdb):
 			c = event.app.my.controls['codeview']
 			line, col = c.document.translate_index_to_position(c.document.cursor_position)
 			line += 1
-			run_gdb_cmd(event.app, 'b %s:%d'%(event.app.gdb.sourcefile, line))
+			run_gdb_cmd(event.app, 'b %s:%d'%(event.app.my.gdb.sourcefile, line))
 	@kb.add(u'f5')
 	def eff_five_(event):
 		run_gdb_cmd(event.app, 'c')
@@ -591,7 +591,7 @@ def setup_app(gdb):
 			app.control_to_name_mapping[controls[name].content] = name
 
 	app.locals = OrderedDict()
-	app.gdb = gdb
+	app.my.gdb = gdb
 	app.last_gdb_cmd = ''
 	app.input_gdb = True
 	app.focus_list = ['input', 'codeview', 'inferiorout', 'gdbout', 'locals']
@@ -658,26 +658,26 @@ def codeview_set_line(ctrl, lineno):
 
 _STEP_COMMANDS = ['n','s','c','next','step','continue']
 def run_gdb_cmd(app, cmd, hide=False):
-	oldsrc = app.gdb.sourcefile
-	app.gdb.send(cmd)
-	s, t = app.gdb.read()
+	oldsrc = app.my.gdb.sourcefile
+	app.my.gdb.send(cmd)
+	s, t = app.my.gdb.read()
 	if not hide: add_gdbview_text(app, s + t)
 	if cmd in _STEP_COMMANDS:
 		for line in s.split('\n'):
 			a = line.replace('\t', ' ').split(' ')
-			if isnumeric(a[0]): app.gdb.lineno = int(a[0])
+			if isnumeric(a[0]): app.my.gdb.lineno = int(a[0])
 			elif ':' in a[-1]:
 				file, lineno = a[-1].split(':')
-				app.gdb.set_sourcefile(app.gdb.find_sourcefile(file))
-				debug(app, app.gdb.sourcefile)
-				if isnumeric(lineno): app.gdb.lineno = int(lineno)
-	if app.gdb.istdout_canread():
-		app.my.controls['inferiorout'].text += prepare_text(os.read(app.gdb.istdout(), 1024*4))
+				app.my.gdb.set_sourcefile(app.my.gdb.find_sourcefile(file))
+				debug(app, app.my.gdb.sourcefile)
+				if isnumeric(lineno): app.my.gdb.lineno = int(lineno)
+	if app.my.gdb.istdout_canread():
+		app.my.controls['inferiorout'].text += prepare_text(os.read(app.my.gdb.istdout(), 1024*4))
 		scroll_down(app.my.controls['inferiorout'])
-	if not app.gdb.sourcefile == oldsrc:
+	if not app.my.gdb.sourcefile == oldsrc:
 		load_source(app)
-	if not cmd.startswith('b ') and app.gdb.lineno != -1:
-		codeview_set_line(app.my.controls['codeview'], app.gdb.lineno)
+	if not cmd.startswith('b ') and app.my.gdb.lineno != -1:
+		codeview_set_line(app.my.controls['codeview'], app.my.gdb.lineno)
 	if cmd in _STEP_COMMANDS:
 		get_locals(app)
 		app.my.controls['vardetails'].update()
@@ -706,8 +706,8 @@ def hexify_string_literal(s):
 	return t + '"'
 
 def get_locals(app):
-	app.gdb.send('info locals')
-	s = app.gdb.proc.read_until(app.gdb.proc.stdout(), '(gdb) ')
+	app.my.gdb.send('info locals')
+	s = app.my.gdb.proc.read_until(app.my.gdb.proc.stdout(), '(gdb) ')
 	mylocals = dict()
 	for line in s.split('\n'):
 		if ' = ' in line:
@@ -735,7 +735,7 @@ def scroll_to(control, n):
 	set_lineno(control, n)
 
 def load_source(app):
-	app.my.controls['codeview'].text = prepare_text(open(app.gdb.sourcefile, 'r').read())
+	app.my.controls['codeview'].text = prepare_text(open(app.my.gdb.sourcefile, 'r').read())
 
 def set_lineno(control, lineno):
 	control.buffer.cursor_position = \
@@ -752,7 +752,6 @@ if __name__ == '__main__':
 	gdb_output = setup_gdb(gdb)
 	app = setup_app(gdb)
 	app.my.controls['gdbout'].text = prepare_text(gdb_output)
-	app.gdb = gdb
 	scroll_down(app.my.controls['gdbout'])
 	load_source(app)
 
