@@ -277,7 +277,7 @@ def sidebar(name, kvdict):
 		def append_title(title):
 			@if_mousedown
 			def focus_from_title(mouse_event):
-				get_app().my_set_focus(name)
+				get_app().my.set_focus(name)
 			foc = ',focused' if get_app().my.focused_control == name else ''
 			tokens.extend([
 				('class:sidebar', ' ', focus_from_title),
@@ -289,12 +289,12 @@ def sidebar(name, kvdict):
 
 			@if_mousedown
 			def select_item(mouse_event):
-				get_app().my_set_focus(name)
+				get_app().my.set_focus(name)
 				get_app().my.controls[name].selected_option_index = index
 
 			@if_mousedown
 			def trigger_vardetail(mouse_event):
-				get_app().my_set_focus(name)
+				get_app().my.set_focus(name)
 				get_app().my.controls[name].selected_option_index = index
 				vardetails_toggle_on_off()
 
@@ -495,7 +495,7 @@ def setup_app(gdb):
 	@kb.add(u'enter')
 	def enter_(event):
 		if event.app.my.focused_control != 'input':
-			event.app.my_set_focus('input')
+			event.app.my.set_focus('input')
 			return
 		if event.app.my.input_gdb:
 			cmd = event.app.my.controls['input'].content.buffer.text
@@ -518,7 +518,7 @@ def setup_app(gdb):
 				next_focus = i+1
 				if next_focus >= len(event.app.my.focus_list):
 					next_focus = 0
-				event.app.my_set_focus(event.app.my.focus_list[next_focus])
+				event.app.my.set_focus(event.app.my.focus_list[next_focus])
 				break
 	@kb.add(u'c-b')
 	def cb_(event):
@@ -605,7 +605,7 @@ def setup_app(gdb):
 			name = get_app().my.control_to_name_mapping[ctrl]
 		get_app().layout.focus(ctrl)
 		get_app().my.focused_control = name
-	app.my_set_focus = _set_focus
+	app.my.set_focus = _set_focus
 	def _has_focus(ctrl_or_name):
 		ctrl = get_app().my.controls[ctrl_or_name] if isinstance(ctrl_or_name, str) else ctrl_or_name
 		return get_app().layout.has_focus(ctrl)
@@ -616,7 +616,7 @@ def setup_app(gdb):
 		# loosely based on prompt_toolkit/layout/controls.py:716
 		#if self.focus_on_click() and mouse_event.event_type == MouseEventType.MOUSE_DOWN:
 		if mouse_event.event_type == MouseEventType.MOUSE_DOWN:
-			get_app().my_set_focus(self)
+			get_app().my.set_focus(self)
 			processed_line = self._last_get_processed_line(mouse_event.position.y)
 			xpos = processed_line.display_to_source(mouse_event.position.x)
 			index = self.buffer.document.translate_row_col_to_index(mouse_event.position.y, xpos)
