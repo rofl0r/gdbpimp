@@ -582,13 +582,13 @@ def setup_app(gdb):
 	class My(): pass
 	app.my = My()
 	app.my.controls = controls
-	app.control_to_name_mapping = {}
+	app.my.control_to_name_mapping = {}
 	for name in controls:
-		app.control_to_name_mapping[controls[name]] = name
+		app.my.control_to_name_mapping[controls[name]] = name
 		if isinstance(controls[name], TextArea) or 'control' in vars(controls[name]):
-			app.control_to_name_mapping[controls[name].control] = name
+			app.my.control_to_name_mapping[controls[name].control] = name
 		elif 'content' in vars(controls[name]):
-			app.control_to_name_mapping[controls[name].content] = name
+			app.my.control_to_name_mapping[controls[name].content] = name
 
 	app.locals = OrderedDict()
 	app.my.gdb = gdb
@@ -602,7 +602,7 @@ def setup_app(gdb):
 			name = ctrl_or_name
 		else:
 			ctrl = ctrl_or_name
-			name = get_app().control_to_name_mapping[ctrl]
+			name = get_app().my.control_to_name_mapping[ctrl]
 		get_app().layout.focus(ctrl)
 		get_app().focused_control = name
 	app.my_set_focus = _set_focus
