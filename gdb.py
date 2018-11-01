@@ -653,8 +653,10 @@ def add_gdbview_text(app, text):
 	scroll_down(app.my.controls['gdbout'])
 
 def codeview_set_line(ctrl, lineno):
-	height = ctrl.window.render_info.last_visible_line() - ctrl.window.render_info.first_visible_line()
-	scroll_to(ctrl, lineno + height/2)
+	fl = ctrl.window.render_info.first_visible_line()
+	height = ctrl.window.render_info.last_visible_line() - fl
+	direction = -1 if lineno < fl else 1
+	scroll_to(ctrl, lineno + (height/2)*direction)
 
 _STEP_COMMANDS = ['n','s','c','next','step','continue']
 def run_gdb_cmd(app, cmd, hide=False):
