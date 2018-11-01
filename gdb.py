@@ -505,7 +505,7 @@ def setup_app(gdb):
 			if event.app.my.controls['input'].content.buffer.text == 'q':
 				event.app.exit()
 		else:
-			try: app.console.runsource(event.app.my.controls['input'].content.buffer.text)
+			try: app.my.console.runsource(event.app.my.controls['input'].content.buffer.text)
 			except Exception as e:
 				import traceback
 				add_gdbview_text(event.app, traceback.format_exc())
@@ -611,7 +611,7 @@ def setup_app(gdb):
 		return get_app().layout.has_focus(ctrl)
 	app.my_has_focus = _has_focus
 	app_console_writefunc = lambda x: add_gdbview_text(get_app(), x)
-	app.console = py_console.Shell(locals=globals(), writefunc=app_console_writefunc)
+	app.my.console = py_console.Shell(locals=globals(), writefunc=app_console_writefunc)
 	def my_mouse_handler(self, mouse_event):
 		# loosely based on prompt_toolkit/layout/controls.py:716
 		#if self.focus_on_click() and mouse_event.event_type == MouseEventType.MOUSE_DOWN:
