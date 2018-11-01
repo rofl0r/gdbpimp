@@ -190,6 +190,7 @@ from pygments.lexers.c_cpp import CLexer
 from pygments.token import Token
 from prompt_toolkit.styles import Style, style_from_pygments_cls, merge_styles
 from editor_style import CodeviewStyle
+import six
 
 class OrderedDict():
 	def __init__(self):
@@ -274,10 +275,13 @@ def sidebar(name, kvdict):
 	def get_text_fragments():
 		tokens = []
 		def append_title(title):
+			@if_mousedown
+			def focus_from_title(mouse_event):
+				get_app().my_set_focus(name)
 			foc = ',focused' if get_app().focused_control == name else ''
 			tokens.extend([
-				('class:sidebar', ' '),
-				('class:sidebar.title'+foc, center_str(title, _CTR_WIDTH)),
+				('class:sidebar', ' ', focus_from_title),
+				('class:sidebar.title'+foc, center_str(title, _CTR_WIDTH), focus_from_title),
 				('class:sidebar', '\n'),
 			])
 		def append(index, label, status):
@@ -285,12 +289,12 @@ def sidebar(name, kvdict):
 
 			@if_mousedown
 			def select_item(mouse_event):
-				get_app().set_focus(name)
+				get_app().my_set_focus(name)
 				get_app().controls[name].selected_option_index = index
 
 			@if_mousedown
 			def trigger_vardetail(mouse_event):
-				get_app().set_focus(name)
+				get_app().my_set_focus(name)
 				get_app().controls[name].selected_option_index = index
 				vardetails_toggle_on_off()
 
@@ -321,6 +325,8 @@ def sidebar(name, kvdict):
 			get_app().controls[name].selected_option_index += 1
 		def move_cursor_up(self):
 			get_app().controls[name].selected_option_index -= 1
+		def focus_on_click(self):
+			return True
 
 	ctrl =  Window(
 		Control(get_text_fragments),
@@ -489,7 +495,7 @@ def setup_app(gdb):
 	@kb.add(u'enter')
 	def enter_(event):
 		if event.app.focused_control != 'input':
-			event.app.set_focus('input')
+			event.app.my_set_focus('input')
 			return
 		if event.app.input_gdb:
 			cmd = event.app.controls['input'].content.buffer.text
@@ -512,7 +518,7 @@ def setup_app(gdb):
 				next_focus = i+1
 				if next_focus >= len(event.app.focus_list):
 					next_focus = 0
-				event.app.set_focus(event.app.focus_list[next_focus])
+				event.app.my_set_focus(event.app.focus_list[next_focus])
 				break
 	@kb.add(u'c-b')
 	def cb_(event):
@@ -574,18 +580,48 @@ def setup_app(gdb):
 		mouse_support = True,
 	)
 	app.controls = controls
+	app.control_to_name_mapping = {}
+	for name in controls:
+		app.control_to_name_mapping[controls[name]] = name
+		if isinstance(controls[name], TextArea) or 'control' in vars(controls[name]):
+			app.control_to_name_mapping[controls[name].control] = name
+		elif 'content' in vars(controls[name]):
+			app.control_to_name_mapping[controls[name].content] = name
+
 	app.locals = OrderedDict()
 	app.gdb = gdb
 	app.last_gdb_cmd = ''
 	app.input_gdb = True
-	app.focus_list = ['input', 'codeview', 'gdbout', 'locals']
+	app.focus_list = ['input', 'codeview', 'inferiorout', 'gdbout', 'locals']
 	app.focused_control = 'input'
-	def _set_focus(cname):
-		app.layout.focus(app.controls[cname])
-		app.focused_control = cname
-	app.set_focus = _set_focus
+	def _set_focus(ctrl_or_name):
+		if isinstance(ctrl_or_name, six.text_type):
+			ctrl = get_app().controls[ctrl_or_name]
+			name = ctrl_or_name
+		else:
+			ctrl = ctrl_or_name
+			name = get_app().control_to_name_mapping[ctrl]
+		get_app().layout.focus(ctrl)
+		get_app().focused_control = name
+	app.my_set_focus = _set_focus
+	def _has_focus(ctrl_or_name):
+		ctrl = get_app().controls[ctrl_or_name] if isinstance(ctrl_or_name, str) else ctrl_or_name
+		return get_app().layout.has_focus(ctrl)
+	app.my_has_focus = _has_focus
 	app_console_writefunc = lambda x: add_gdbview_text(get_app(), x)
 	app.console = py_console.Shell(locals=globals(), writefunc=app_console_writefunc)
+	def my_mouse_handler(self, mouse_event):
+		# loosely based on prompt_toolkit/layout/controls.py:716
+		#if self.focus_on_click() and mouse_event.event_type == MouseEventType.MOUSE_DOWN:
+		if mouse_event.event_type == MouseEventType.MOUSE_DOWN:
+			get_app().my_set_focus(self)
+		else: return NotImplemented
+	for x in app.focus_list:
+		if x == 'locals': continue #don't override custom mouse handler
+		if isinstance(app.controls[x], TextArea):
+			app.controls[x].control.mouse_handler = my_mouse_handler.__get__(app.controls[x].control)
+		else:
+			app.controls[x].content.mouse_handler = my_mouse_handler.__get__(app.controls[x].content)
 
 	return app
 
