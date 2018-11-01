@@ -278,7 +278,7 @@ def sidebar(name, kvdict):
 			@if_mousedown
 			def focus_from_title(mouse_event):
 				get_app().my_set_focus(name)
-			foc = ',focused' if get_app().focused_control == name else ''
+			foc = ',focused' if get_app().my.focused_control == name else ''
 			tokens.extend([
 				('class:sidebar', ' ', focus_from_title),
 				('class:sidebar.title'+foc, center_str(title, _CTR_WIDTH), focus_from_title),
@@ -347,7 +347,7 @@ def vardetails_toggle_on_off():
 def load_sidebar_bindings(name):
 	#sidebar_visible = Condition(lambda: config.show_sidebar)
 	sidebar_visible = Condition(lambda: True)
-	sidebar_focused = Condition(lambda: get_app().focused_control == name)
+	sidebar_focused = Condition(lambda: get_app().my.focused_control == name)
 	sidebar_handles_keys = sidebar_visible & sidebar_focused
 	bindings = KeyBindings()
 	handle = bindings.add
@@ -366,7 +366,7 @@ def load_sidebar_bindings(name):
 	return bindings
 
 def load_inputbar_bindings():
-	inputbar_focused = Condition(lambda: get_app().focused_control == 'input')
+	inputbar_focused = Condition(lambda: get_app().my.focused_control == 'input')
 	bindings = KeyBindings()
 	handle = bindings.add
 	@handle('up', filter=inputbar_focused)
@@ -494,7 +494,7 @@ def setup_app(gdb):
 
 	@kb.add(u'enter')
 	def enter_(event):
-		if event.app.focused_control != 'input':
+		if event.app.my.focused_control != 'input':
 			event.app.my_set_focus('input')
 			return
 		if event.app.input_gdb:
@@ -514,7 +514,7 @@ def setup_app(gdb):
 	@kb.add(u'tab')
 	def enter_(event):
 		for i in xrange(len(event.app.my.focus_list)):
-			if event.app.my.focus_list[i] == event.app.focused_control:
+			if event.app.my.focus_list[i] == event.app.my.focused_control:
 				next_focus = i+1
 				if next_focus >= len(event.app.my.focus_list):
 					next_focus = 0
@@ -522,7 +522,7 @@ def setup_app(gdb):
 				break
 	@kb.add(u'c-b')
 	def cb_(event):
-		if event.app.focused_control == 'codeview':
+		if event.app.my.focused_control == 'codeview':
 			c = event.app.my.controls['codeview']
 			line, col = c.document.translate_index_to_position(c.document.cursor_position)
 			line += 1
@@ -595,7 +595,7 @@ def setup_app(gdb):
 	app.my.last_gdb_cmd = ''
 	app.input_gdb = True
 	app.my.focus_list = ['input', 'codeview', 'inferiorout', 'gdbout', 'locals']
-	app.focused_control = 'input'
+	app.my.focused_control = 'input'
 	def _set_focus(ctrl_or_name):
 		if isinstance(ctrl_or_name, six.text_type):
 			ctrl = get_app().my.controls[ctrl_or_name]
@@ -604,7 +604,7 @@ def setup_app(gdb):
 			ctrl = ctrl_or_name
 			name = get_app().my.control_to_name_mapping[ctrl]
 		get_app().layout.focus(ctrl)
-		get_app().focused_control = name
+		get_app().my.focused_control = name
 	app.my_set_focus = _set_focus
 	def _has_focus(ctrl_or_name):
 		ctrl = get_app().my.controls[ctrl_or_name] if isinstance(ctrl_or_name, str) else ctrl_or_name
