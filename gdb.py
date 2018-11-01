@@ -489,15 +489,15 @@ def setup_app(gdb):
 		event.app.exit()
 	@kb.add(u'f1')
 	def eff_one_(event):
-		event.app.input_gdb = not event.app.input_gdb
-		event.app.my.controls['input_label'].text = '(gdb) ' if event.app.input_gdb else '>>> '
+		event.app.my.input_gdb = not event.app.my.input_gdb
+		event.app.my.controls['input_label'].text = '(gdb) ' if event.app.my.input_gdb else '>>> '
 
 	@kb.add(u'enter')
 	def enter_(event):
 		if event.app.my.focused_control != 'input':
 			event.app.my_set_focus('input')
 			return
-		if event.app.input_gdb:
+		if event.app.my.input_gdb:
 			cmd = event.app.my.controls['input'].content.buffer.text
 			if not len(cmd): cmd = event.app.my.last_gdb_cmd
 			else: event.app.my.last_gdb_cmd = cmd
@@ -593,7 +593,7 @@ def setup_app(gdb):
 	app.my.locals = OrderedDict()
 	app.my.gdb = gdb
 	app.my.last_gdb_cmd = ''
-	app.input_gdb = True
+	app.my.input_gdb = True
 	app.my.focus_list = ['input', 'codeview', 'inferiorout', 'gdbout', 'locals']
 	app.my.focused_control = 'input'
 	def _set_focus(ctrl_or_name):
