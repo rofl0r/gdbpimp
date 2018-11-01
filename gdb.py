@@ -427,7 +427,7 @@ def setup_app(gdb):
 		focusable = True,
 		focus_on_click=True,
 	)
-	controls['locals'] = sidebar('locals', lambda : get_app().locals)
+	controls['locals'] = sidebar('locals', lambda : get_app().my.locals)
 	controls['input_label'] = Label(
 		text = u'(gdb) ',
 		style = u'class:input_label',
@@ -454,7 +454,7 @@ def setup_app(gdb):
 		style = u'class:vardetails',
 	)
 	def up_():
-		val = get_app().locals.get_value_by_index( \
+		val = get_app().my.locals.get_value_by_index( \
 			get_app().my.controls['locals'].selected_option_index)
 		text = get_app().my.controls['vardetails'].text
 		if val is None and text != '':
@@ -590,7 +590,7 @@ def setup_app(gdb):
 		elif 'content' in vars(controls[name]):
 			app.my.control_to_name_mapping[controls[name].content] = name
 
-	app.locals = OrderedDict()
+	app.my.locals = OrderedDict()
 	app.my.gdb = gdb
 	app.my.last_gdb_cmd = ''
 	app.input_gdb = True
@@ -726,7 +726,7 @@ def get_locals(app):
 			elif 'out of bounds>' in v:
 				mv= '<OOB>'
 			mylocals[k] = (mv, v)
-	app.locals.update(mylocals)
+	app.my.locals.update(mylocals)
 
 def scroll_down(control):
 	set_lineno(control, count_char(control.text, '\n')+1)
