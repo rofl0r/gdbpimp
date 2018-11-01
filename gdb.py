@@ -285,17 +285,17 @@ def sidebar(name, kvdict):
 				('class:sidebar', '\n'),
 			])
 		def append(index, label, status):
-			selected = get_app().controls[name].selected_option_index == index
+			selected = get_app().my.controls[name].selected_option_index == index
 
 			@if_mousedown
 			def select_item(mouse_event):
 				get_app().my_set_focus(name)
-				get_app().controls[name].selected_option_index = index
+				get_app().my.controls[name].selected_option_index = index
 
 			@if_mousedown
 			def trigger_vardetail(mouse_event):
 				get_app().my_set_focus(name)
-				get_app().controls[name].selected_option_index = index
+				get_app().my.controls[name].selected_option_index = index
 				vardetails_toggle_on_off()
 
 			odd = 'odd' if index%2 != 0 else ''
@@ -322,9 +322,9 @@ def sidebar(name, kvdict):
 
 	class Control(FormattedTextControl):
 		def move_cursor_down(self):
-			get_app().controls[name].selected_option_index += 1
+			get_app().my.controls[name].selected_option_index += 1
 		def move_cursor_up(self):
-			get_app().controls[name].selected_option_index -= 1
+			get_app().my.controls[name].selected_option_index -= 1
 		def focus_on_click(self):
 			return True
 
@@ -339,10 +339,10 @@ def sidebar(name, kvdict):
 
 def vardetails_toggle_on_off():
 	app = get_app()
-	if app.controls['vardetails'].text == '':
-		app.controls['vardetails'].text = 'X'
-		app.controls['vardetails'].update()
-	else: app.controls['vardetails'].text = ''
+	if app.my.controls['vardetails'].text == '':
+		app.my.controls['vardetails'].text = 'X'
+		app.my.controls['vardetails'].update()
+	else: app.my.controls['vardetails'].text = ''
 
 def load_sidebar_bindings(name):
 	#sidebar_visible = Condition(lambda: config.show_sidebar)
@@ -353,12 +353,12 @@ def load_sidebar_bindings(name):
 	handle = bindings.add
 	@handle('up', filter=sidebar_handles_keys)
 	def _(event):
-		event.app.controls[name].selected_option_index = (
-		(event.app.controls[name].selected_option_index - 1) % len(vars(event.app)[name]))
+		event.app.my.controls[name].selected_option_index = (
+		(event.app.my.controls[name].selected_option_index - 1) % len(vars(event.app)[name]))
 	@handle('down', filter=sidebar_handles_keys)
 	def _(event):
-		event.app.controls[name].selected_option_index = (
-		(event.app.controls[name].selected_option_index + 1) % len(vars(event.app)[name]))
+		event.app.my.controls[name].selected_option_index = (
+		(event.app.my.controls[name].selected_option_index + 1) % len(vars(event.app)[name]))
 	if name == 'locals':
 		@handle('enter', filter=sidebar_handles_keys)
 		def _(event):
@@ -371,10 +371,10 @@ def load_inputbar_bindings():
 	handle = bindings.add
 	@handle('up', filter=inputbar_focused)
 	def _(event):
-		event.app.controls['input'].content.buffer.auto_up()
+		event.app.my.controls['input'].content.buffer.auto_up()
 	@handle('down', filter=inputbar_focused)
 	def _(event):
-		event.app.controls['input'].content.buffer.auto_down()
+		event.app.my.controls['input'].content.buffer.auto_down()
 	return bindings
 
 def setup_app(gdb):
@@ -455,16 +455,16 @@ def setup_app(gdb):
 	)
 	def up_():
 		val = get_app().locals.get_value_by_index( \
-			get_app().controls['locals'].selected_option_index)
-		text = get_app().controls['vardetails'].text
+			get_app().my.controls['locals'].selected_option_index)
+		text = get_app().my.controls['vardetails'].text
 		if val is None and text != '':
-			get_app().controls['vardetails'].text = '<out of scope>'
+			get_app().my.controls['vardetails'].text = '<out of scope>'
 		elif text != '':
-			get_app().controls['vardetails'].text = val[1]
+			get_app().my.controls['vardetails'].text = val[1]
 	controls['vardetails'].update = up_
 
 	def need_vardetails():
-		return get_app().controls['vardetails'].text != ''
+		return get_app().my.controls['vardetails'].text != ''
 
 	controls['root_container'] = HSplit([
 		controls['header'],
@@ -490,7 +490,7 @@ def setup_app(gdb):
 	@kb.add(u'f1')
 	def eff_one_(event):
 		event.app.input_gdb = not event.app.input_gdb
-		event.app.controls['input_label'].text = '(gdb) ' if event.app.input_gdb else '>>> '
+		event.app.my.controls['input_label'].text = '(gdb) ' if event.app.input_gdb else '>>> '
 
 	@kb.add(u'enter')
 	def enter_(event):
@@ -498,18 +498,18 @@ def setup_app(gdb):
 			event.app.my_set_focus('input')
 			return
 		if event.app.input_gdb:
-			cmd = event.app.controls['input'].content.buffer.text
+			cmd = event.app.my.controls['input'].content.buffer.text
 			if not len(cmd): cmd = event.app.last_gdb_cmd
 			else: event.app.last_gdb_cmd = cmd
 			run_gdb_cmd(event.app, cmd)
-			if event.app.controls['input'].content.buffer.text == 'q':
+			if event.app.my.controls['input'].content.buffer.text == 'q':
 				event.app.exit()
 		else:
-			try: app.console.runsource(event.app.controls['input'].content.buffer.text)
+			try: app.console.runsource(event.app.my.controls['input'].content.buffer.text)
 			except Exception as e:
 				import traceback
 				add_gdbview_text(event.app, traceback.format_exc())
-		event.app.controls['input'].content.buffer.reset(append_to_history=True)
+		event.app.my.controls['input'].content.buffer.reset(append_to_history=True)
 
 	@kb.add(u'tab')
 	def enter_(event):
@@ -523,7 +523,7 @@ def setup_app(gdb):
 	@kb.add(u'c-b')
 	def cb_(event):
 		if event.app.focused_control == 'codeview':
-			c = event.app.controls['codeview']
+			c = event.app.my.controls['codeview']
 			line, col = c.document.translate_index_to_position(c.document.cursor_position)
 			line += 1
 			run_gdb_cmd(event.app, 'b %s:%d'%(event.app.gdb.sourcefile, line))
@@ -579,7 +579,9 @@ def setup_app(gdb):
 		]),
 		mouse_support = True,
 	)
-	app.controls = controls
+	class My(): pass
+	app.my = My()
+	app.my.controls = controls
 	app.control_to_name_mapping = {}
 	for name in controls:
 		app.control_to_name_mapping[controls[name]] = name
@@ -596,7 +598,7 @@ def setup_app(gdb):
 	app.focused_control = 'input'
 	def _set_focus(ctrl_or_name):
 		if isinstance(ctrl_or_name, six.text_type):
-			ctrl = get_app().controls[ctrl_or_name]
+			ctrl = get_app().my.controls[ctrl_or_name]
 			name = ctrl_or_name
 		else:
 			ctrl = ctrl_or_name
@@ -605,7 +607,7 @@ def setup_app(gdb):
 		get_app().focused_control = name
 	app.my_set_focus = _set_focus
 	def _has_focus(ctrl_or_name):
-		ctrl = get_app().controls[ctrl_or_name] if isinstance(ctrl_or_name, str) else ctrl_or_name
+		ctrl = get_app().my.controls[ctrl_or_name] if isinstance(ctrl_or_name, str) else ctrl_or_name
 		return get_app().layout.has_focus(ctrl)
 	app.my_has_focus = _has_focus
 	app_console_writefunc = lambda x: add_gdbview_text(get_app(), x)
@@ -622,10 +624,10 @@ def setup_app(gdb):
 		else: return NotImplemented
 	for x in app.focus_list:
 		if x == 'locals': continue #don't override custom mouse handler
-		if isinstance(app.controls[x], TextArea):
-			app.controls[x].control.mouse_handler = my_mouse_handler.__get__(app.controls[x].control)
+		if isinstance(app.my.controls[x], TextArea):
+			app.my.controls[x].control.mouse_handler = my_mouse_handler.__get__(app.my.controls[x].control)
 		else:
-			app.controls[x].content.mouse_handler = my_mouse_handler.__get__(app.controls[x].content)
+			app.my.controls[x].content.mouse_handler = my_mouse_handler.__get__(app.my.controls[x].content)
 
 	return app
 
@@ -643,12 +645,12 @@ def isnumeric(s):
 	return True
 
 def debug(app, text):
-	app.controls['header'].text = prepare_text(text)
+	app.my.controls['header'].text = prepare_text(text)
 
 def add_gdbview_text(app, text):
 	pt = prepare_text(text)
-	app.controls['gdbout'].text += '\n' + pt.replace('\n(gdb) ', '')
-	scroll_down(app.controls['gdbout'])
+	app.my.controls['gdbout'].text += '\n' + pt.replace('\n(gdb) ', '')
+	scroll_down(app.my.controls['gdbout'])
 
 def codeview_set_line(ctrl, lineno):
 	height = ctrl.window.render_info.last_visible_line() - ctrl.window.render_info.first_visible_line()
@@ -670,15 +672,15 @@ def run_gdb_cmd(app, cmd, hide=False):
 				debug(app, app.gdb.sourcefile)
 				if isnumeric(lineno): app.gdb.lineno = int(lineno)
 	if app.gdb.istdout_canread():
-		app.controls['inferiorout'].text += prepare_text(os.read(app.gdb.istdout(), 1024*4))
-		scroll_down(app.controls['inferiorout'])
+		app.my.controls['inferiorout'].text += prepare_text(os.read(app.gdb.istdout(), 1024*4))
+		scroll_down(app.my.controls['inferiorout'])
 	if not app.gdb.sourcefile == oldsrc:
 		load_source(app)
 	if not cmd.startswith('b ') and app.gdb.lineno != -1:
-		codeview_set_line(app.controls['codeview'], app.gdb.lineno)
+		codeview_set_line(app.my.controls['codeview'], app.gdb.lineno)
 	if cmd in _STEP_COMMANDS:
 		get_locals(app)
-		app.controls['vardetails'].update()
+		app.my.controls['vardetails'].update()
 	return s,t
 
 def oct_to_hex(s):
@@ -733,7 +735,7 @@ def scroll_to(control, n):
 	set_lineno(control, n)
 
 def load_source(app):
-	app.controls['codeview'].text = prepare_text(open(app.gdb.sourcefile, 'r').read())
+	app.my.controls['codeview'].text = prepare_text(open(app.gdb.sourcefile, 'r').read())
 
 def set_lineno(control, lineno):
 	control.buffer.cursor_position = \
@@ -749,9 +751,9 @@ if __name__ == '__main__':
 	gdb = GDB(concat_argv())
 	gdb_output = setup_gdb(gdb)
 	app = setup_app(gdb)
-	app.controls['gdbout'].text = prepare_text(gdb_output)
+	app.my.controls['gdbout'].text = prepare_text(gdb_output)
 	app.gdb = gdb
-	scroll_down(app.controls['gdbout'])
+	scroll_down(app.my.controls['gdbout'])
 	load_source(app)
 
 	app.run()
