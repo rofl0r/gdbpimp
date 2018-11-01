@@ -615,6 +615,10 @@ def setup_app(gdb):
 		#if self.focus_on_click() and mouse_event.event_type == MouseEventType.MOUSE_DOWN:
 		if mouse_event.event_type == MouseEventType.MOUSE_DOWN:
 			get_app().my_set_focus(self)
+			processed_line = self._last_get_processed_line(mouse_event.position.y)
+			xpos = processed_line.display_to_source(mouse_event.position.x)
+			index = self.buffer.document.translate_row_col_to_index(mouse_event.position.y, xpos)
+			self.buffer.cursor_position = index
 		else: return NotImplemented
 	for x in app.focus_list:
 		if x == 'locals': continue #don't override custom mouse handler
