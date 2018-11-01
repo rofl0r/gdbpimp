@@ -609,7 +609,7 @@ def setup_app(gdb):
 	def _has_focus(ctrl_or_name):
 		ctrl = get_app().my.controls[ctrl_or_name] if isinstance(ctrl_or_name, str) else ctrl_or_name
 		return get_app().layout.has_focus(ctrl)
-	app.my_has_focus = _has_focus
+	app.my.has_focus = _has_focus
 	app_console_writefunc = lambda x: add_gdbview_text(get_app(), x)
 	app.my.console = py_console.Shell(locals=globals(), writefunc=app_console_writefunc)
 	def my_mouse_handler(self, mouse_event):
