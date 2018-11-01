@@ -354,11 +354,13 @@ def load_sidebar_bindings(name):
 	@handle('up', filter=sidebar_handles_keys)
 	def _(event):
 		event.app.my.controls[name].selected_option_index = (
-		(event.app.my.controls[name].selected_option_index - 1) % len(vars(event.app)[name]))
+		(event.app.my.controls[name].selected_option_index - 1) % len(vars(event.app.my)[name]))
+		# the vars thing is so we can point to app.my.locals OrderedDict
+		# but when we repurpose the sidebar, to something else
 	@handle('down', filter=sidebar_handles_keys)
 	def _(event):
 		event.app.my.controls[name].selected_option_index = (
-		(event.app.my.controls[name].selected_option_index + 1) % len(vars(event.app)[name]))
+		(event.app.my.controls[name].selected_option_index + 1) % len(vars(event.app.my)[name]))
 	if name == 'locals':
 		@handle('enter', filter=sidebar_handles_keys)
 		def _(event):
