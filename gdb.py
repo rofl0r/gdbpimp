@@ -513,12 +513,12 @@ def setup_app(gdb):
 
 	@kb.add(u'tab')
 	def enter_(event):
-		for i in xrange(len(event.app.focus_list)):
-			if event.app.focus_list[i] == event.app.focused_control:
+		for i in xrange(len(event.app.my.focus_list)):
+			if event.app.my.focus_list[i] == event.app.focused_control:
 				next_focus = i+1
-				if next_focus >= len(event.app.focus_list):
+				if next_focus >= len(event.app.my.focus_list):
 					next_focus = 0
-				event.app.my_set_focus(event.app.focus_list[next_focus])
+				event.app.my_set_focus(event.app.my.focus_list[next_focus])
 				break
 	@kb.add(u'c-b')
 	def cb_(event):
@@ -594,7 +594,7 @@ def setup_app(gdb):
 	app.my.gdb = gdb
 	app.my.last_gdb_cmd = ''
 	app.input_gdb = True
-	app.focus_list = ['input', 'codeview', 'inferiorout', 'gdbout', 'locals']
+	app.my.focus_list = ['input', 'codeview', 'inferiorout', 'gdbout', 'locals']
 	app.focused_control = 'input'
 	def _set_focus(ctrl_or_name):
 		if isinstance(ctrl_or_name, six.text_type):
@@ -622,7 +622,7 @@ def setup_app(gdb):
 			index = self.buffer.document.translate_row_col_to_index(mouse_event.position.y, xpos)
 			self.buffer.cursor_position = index
 		else: return NotImplemented
-	for x in app.focus_list:
+	for x in app.my.focus_list:
 		if x == 'locals': continue #don't override custom mouse handler
 		if isinstance(app.my.controls[x], TextArea):
 			app.my.controls[x].control.mouse_handler = my_mouse_handler.__get__(app.my.controls[x].control)
