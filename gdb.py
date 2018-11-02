@@ -174,7 +174,7 @@ def setup_gdb(gdb):
 
 from prompt_toolkit import Application
 from prompt_toolkit.buffer import Buffer
-from prompt_toolkit.widgets import TextArea, Label
+from prompt_toolkit.widgets import TextArea, Label, MenuContainer, MenuItem
 from prompt_toolkit.layout.containers import HSplit, VSplit, Window, ScrollOffsets, ConditionalContainer
 from prompt_toolkit.layout.controls import BufferControl, FormattedTextControl
 from prompt_toolkit.layout.layout import Layout
@@ -485,14 +485,56 @@ def setup_app(gdb):
 		]),
 	])
 
+	def do_exit():
+		get_app().exit(result=True)
+	def do_cont():
+		run_gdb_cmd(get_app(), 'c')
+	def do_step_into():
+		run_gdb_cmd(get_app(), 's')
+	def do_step_over():
+		run_gdb_cmd(get_app(), 'n')
+	def do_set_bp():
+		if get_app().my.focused_control == 'codeview':
+			c = get_app().my.controls['codeview']
+			line, col = c.document.translate_index_to_position(c.document.cursor_position)
+			line += 1
+			run_gdb_cmd(get_app(), 'b %s:%d'%(get_app().my.gdb.sourcefile, line))
+
+	def do_toggle_prompt():
+		get_app().my.input_gdb = not get_app().my.input_gdb
+		get_app().my.controls['input_label'].text = '(gdb) ' if get_app().my.input_gdb else '>>> '
+	def do_toggle_mouse():
+		# we need to have the ability to turn mouse off to use the X11
+		# clipboard (selection needs to be handled by X11, not the app)
+		get_app().my.mouse_enabled = not get_app().my.mouse_enabled
+
+	controls['root_container'] = MenuContainer(body=controls['root_container'], menu_items=[
+		MenuItem('File', children=[
+			MenuItem('-', disabled=True),
+			MenuItem('Exit', handler=do_exit),
+		]),
+		MenuItem('Debug', children=[
+			MenuItem('Continue  (F5)', handler=do_cont),
+			MenuItem('Step Into (F7)', handler=do_step_into),
+			MenuItem('Step Over (F8)', handler=do_step_over),
+			MenuItem('Set Breakpoint (CTRL-b)', handler=do_set_bp),
+		]),
+		MenuItem('Extra', children=[
+			MenuItem('Toggle python prompt  (F1)', handler=do_toggle_prompt),
+			MenuItem('Toggle mouse support  (F2)', handler=do_toggle_mouse),
+		]),
+	], floats=[])
+
 	kb = KeyBindings()
+	@kb.add(u'escape', 'f')
+	def _focus_menu(event):
+		get_app().layout.focus(get_app().my.controls['root_container'].window)
 	@kb.add(u'c-q')
 	def exit_(event):
-		event.app.exit()
+		do_exit()
 	@kb.add(u'f1')
 	def eff_one_(event):
-		event.app.my.input_gdb = not event.app.my.input_gdb
-		event.app.my.controls['input_label'].text = '(gdb) ' if event.app.my.input_gdb else '>>> '
+		do_toggle_prompt()
 
 	@kb.add(u'enter')
 	def enter_(event):
@@ -524,26 +566,19 @@ def setup_app(gdb):
 				break
 	@kb.add(u'c-b')
 	def cb_(event):
-		if event.app.my.focused_control == 'codeview':
-			c = event.app.my.controls['codeview']
-			line, col = c.document.translate_index_to_position(c.document.cursor_position)
-			line += 1
-			run_gdb_cmd(event.app, 'b %s:%d'%(event.app.my.gdb.sourcefile, line))
+		do_set_bp()
 	@kb.add(u'f5')
 	def eff_five_(event):
-		run_gdb_cmd(event.app, 'c')
+		do_cont()
 	@kb.add(u'f7')
 	def _(event):
-		run_gdb_cmd(event.app, 's')
+		do_step_into()
 	@kb.add(u'f8')
 	def _(event):
-		run_gdb_cmd(event.app, 'n')
-
+		do_step_over()
 	@kb.add(u'f2')
 	def _(event):
-		# we need to have the ability to turn mouse off to use the X11
-		# clipboard (selection needs to be handled by X11, not the app)
-		get_app().my.mouse_enabled = not get_app().my.mouse_enabled
+		do_toggle_mouse()
 
 	styledict = {
 		'gdbout':'bg:#000000 #888888',

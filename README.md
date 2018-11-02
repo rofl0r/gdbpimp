@@ -44,5 +44,4 @@ TODO
   stepout functionality might require an additional dependency on `pycparser`.
 - nicer way to highlight the actual line in the codeview
   (optimally red bar over the entire line)
-- menu
 - ability to customize size of controls
