@@ -697,7 +697,9 @@ def debug(app, text):
 
 def add_gdbview_text(app, text):
 	pt = prepare_text(text)
-	app.my.controls['gdbout'].text += '\n' + pt.replace('\n(gdb) ', '')
+	ad = '\n' + pt.replace('\n(gdb) ', '')
+	while len(ad) and ad[-1] == '\n': ad = ad[:-1]
+	app.my.controls['gdbout'].text += ad
 	scroll_down(app.my.controls['gdbout'])
 
 def codeview_set_line(ctrl, lineno):
