@@ -258,10 +258,9 @@ class SidebarControl(FormattedTextControl):
 
 def sidebar(name, kvdict):
 	# shamelessly stolen and adapted from ptpython/layout.py
-	_KEY_WIDTH = 8
-	_VAL_WIDTH = 14
-	_CTR_WIDTH = _KEY_WIDTH + _VAL_WIDTH
-	_CTR_WIDTH_STR = str(_CTR_WIDTH)
+	_MAX_KEY_WIDTH = 8
+	_VAL_WIDTH = 14  # sufficient to print "0x" + 12hex chars for a 48bit memory address
+	_CTR_WIDTH = _MAX_KEY_WIDTH + _VAL_WIDTH
 	def center_str(s, w):
 		l = len(s)
 		e = w - l
@@ -294,7 +293,9 @@ def sidebar(name, kvdict):
 				('class:sidebar.title'+foc, center_str(title, _CTR_WIDTH), focus_from_title),
 				('class:sidebar', '\n'),
 			])
-		def append(index, label, status):
+		def append(index, label, status, max_key_len):
+			key_len = min(_MAX_KEY_WIDTH, max_key_len)
+			val_len = _CTR_WIDTH - key_len
 			selected = get_app().my.controls[name].selected_option_index == index
 
 			@if_mousedown
@@ -312,8 +313,8 @@ def sidebar(name, kvdict):
 			sel = ',selected' if selected else ''
 			chg = ',changed' if kvdict().was_changed(label) else ''
 			tokens.append(('class:sidebar' + sel, '>' if selected else ' '))
-			tokens.append(('class:sidebar.label' + odd + sel, pad_or_cut(label, _KEY_WIDTH), select_item))
-			tokens.append(('class:sidebar.status' + odd + sel + chg, pad_or_cut(status, _VAL_WIDTH), trigger_vardetail))
+			tokens.append(('class:sidebar.label' + odd + sel, pad_or_cut(label, key_len), select_item))
+			tokens.append(('class:sidebar.status' + odd + sel + chg, pad_or_cut(status, val_len), trigger_vardetail))
 			if selected:
 				tokens.append(('[SetCursorPosition]', ''))
 			tokens.append(('class:sidebar', '<' if selected else ' '))
@@ -323,9 +324,11 @@ def sidebar(name, kvdict):
 		i = 0
 		append_title(name)
 		mydict = kvdict() if callable(kvdict) else kvdict
+		max_key_len = 0
+		for key in mydict: max_key_len = max(max_key_len, len(key))
 		for key in mydict:
 			values = mydict[key]
-			append(i, key, '%s' % values[0])
+			append(i, key, '%s' % values[0], max_key_len+1)
 			i += 1
 		tokens.pop()  # Remove last newline.
 		i += 1 # title
