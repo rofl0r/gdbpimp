@@ -9,6 +9,7 @@ def extract_filename(fn):
 
 class GDB():
 	def __init__(self, command, *args, **kwargs):
+		self.command = command
 		self.proc = Proc("LC_ALL=C gdb --args " + command, shell=True)
 		self.debugf = open('debug.log', 'w')
 		self.sourcefile = ''
@@ -255,6 +256,33 @@ class SidebarControl(FormattedTextControl):
 		get_app().my.controls[name].selected_option_index -= 1
 	def focus_on_click(self):
 		return True
+
+def get_config_file_name():
+	import os
+	return os.getenv('HOME') + '/.gdbpimp.conf.json'
+def write_config_file(s):
+	with open(get_config_file_name(), 'w') as h: h.write(s)
+def get_config_file_contents():
+	try:
+		with open(get_config_file_name(), 'r') as h: s = h.read()
+		return s
+	except: return None
+def json_load_config():
+	import json
+	try: return json.loads(get_config_file_contents())
+	except: return None
+def load_config():
+	import json
+	get_app().my.saved_config = json_load_config() or {}
+	if get_app().my.gdb.command in get_app().my.saved_config:
+		if 'exprs' in get_app().my.saved_config[get_app().my.gdb.command]:
+			get_app().my.exprs_dict = get_app().my.saved_config[get_app().my.gdb.command]['exprs']
+def save_config():
+	get_app().my.saved_config[get_app().my.gdb.command] = {
+		'exprs' : get_app().my.exprs_dict,
+	}
+	import json
+	write_config_file(json.dumps(get_app().my.saved_config))
 
 def sidebar(name, kvdict):
 	# shamelessly stolen and adapted from ptpython/layout.py
@@ -524,6 +552,8 @@ def setup_app(gdb):
 
 	controls['root_container'] = MenuContainer(body=controls['root_container'], menu_items=[
 		MenuItem('File', children=[
+			MenuItem('Load config', handler=load_config),
+			MenuItem('Save config', handler=save_config),
 			MenuItem('-', disabled=True),
 			MenuItem('Exit', handler=do_exit),
 		]),
@@ -653,6 +683,7 @@ def setup_app(gdb):
 	)
 	class My(): pass
 	app.my = My()
+	app.my.saved_config = {}
 	app.my.mouse_enabled = True
 	app.my.controls = controls
 	app.my.control_to_name_mapping = {}
