@@ -328,13 +328,15 @@ def sidebar(name, kvdict):
 			append(i, key, '%s' % values[0])
 			i += 1
 		tokens.pop()  # Remove last newline.
+		i += 1 # title
+		get_app().my.controls[name].height = Dimension(min=2,  max=i+1 if i>1 else 2)
 		return tokens
 
 	ctrl =  Window(
 		SidebarControl(get_text_fragments),
 		style='class:sidebar',
 		width=Dimension.exact(_CTR_WIDTH+2),
-		height=Dimension(min=3),
+		height=Dimension(min=2),
 		scroll_offsets=ScrollOffsets(top=1, bottom=1))
 	ctrl.selected_option_index = 0
 	return ctrl
@@ -471,6 +473,12 @@ def setup_app(gdb):
 	def need_vardetails():
 		return get_app().my.controls['vardetails'].text != ''
 
+	controls['sidebar'] = HSplit([
+		controls['exprs'],
+		controls['locals'],
+	])
+	controls['sidebar']._remaining_space_window.style = 'class:sidebar'
+
 	controls['root_container'] = HSplit([
 		controls['header'],
 		ConditionalContainer(controls['vardetails'], Condition(need_vardetails)),
@@ -484,10 +492,7 @@ def setup_app(gdb):
 					controls['input'],
 				]),
 			]),
-			HSplit([
-				controls['exprs'],
-				controls['locals'],
-			]),
+			controls['sidebar'],
 		]),
 	])
 
