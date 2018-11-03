@@ -803,6 +803,8 @@ def get_locals(app):
 				mv = hex(int(mv))
 			elif 'out of bounds>' in v:
 				mv= '<OOB>'
+			elif mv == '}':
+				mv = v
 			mylocals[k] = (mv, v)
 	app.my.locals.update(mylocals)
 
