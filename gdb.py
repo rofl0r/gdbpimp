@@ -197,6 +197,9 @@ class OrderedDict():
 		self.values = {}
 		self.order = None
 		self._changed = None
+	def append(self, key, value):
+		self.order.append(key)
+		self.values[key] = value
 	def update(self, values):
 		if self.order is None or len(self.order) == 0:
 			self.order = sorted(values.keys())
@@ -245,6 +248,13 @@ def if_mousedown(handler):
 			return NotImplemented
 	return handle_if_mouse_down
 
+class SidebarControl(FormattedTextControl):
+	def move_cursor_down(self):
+		get_app().my.controls[name].selected_option_index += 1
+	def move_cursor_up(self):
+		get_app().my.controls[name].selected_option_index -= 1
+	def focus_on_click(self):
+		return True
 
 def sidebar(name, kvdict):
 	# shamelessly stolen and adapted from ptpython/layout.py
@@ -320,16 +330,8 @@ def sidebar(name, kvdict):
 		tokens.pop()  # Remove last newline.
 		return tokens
 
-	class Control(FormattedTextControl):
-		def move_cursor_down(self):
-			get_app().my.controls[name].selected_option_index += 1
-		def move_cursor_up(self):
-			get_app().my.controls[name].selected_option_index -= 1
-		def focus_on_click(self):
-			return True
-
 	ctrl =  Window(
-		Control(get_text_fragments),
+		SidebarControl(get_text_fragments),
 		style='class:sidebar',
 		width=Dimension.exact(_CTR_WIDTH+2),
 		height=Dimension(min=3),
@@ -430,6 +432,7 @@ def setup_app(gdb):
 		focus_on_click=True,
 	)
 	controls['locals'] = sidebar('locals', lambda : get_app().my.locals)
+	controls['exprs'] = sidebar('exprs', lambda : get_app().my.exprs)
 	controls['input_label'] = Label(
 		text = u'(gdb) ',
 		style = u'class:input_label',
@@ -481,7 +484,10 @@ def setup_app(gdb):
 					controls['input'],
 				]),
 			]),
-			controls['locals'],
+			HSplit([
+				controls['exprs'],
+				controls['locals'],
+			]),
 		]),
 	])
 
@@ -538,18 +544,29 @@ def setup_app(gdb):
 
 	@kb.add(u'enter')
 	def enter_(event):
+		def add_expr(name, expr):
+			get_app().my.exprs_dict[name] = expr
 		if event.app.my.focused_control != 'input':
 			event.app.my.set_focus('input')
 			return
-		if event.app.my.input_gdb:
-			cmd = event.app.my.controls['input'].content.buffer.text
+		text = event.app.my.controls['input'].content.buffer.text
+		if len(text) and text[0] == ':':
+			# direct command
+			command, rest = text.split(' ', 1)
+			if command == ':expr':
+				command, rest = rest.split(' ', 1)
+				if command == 'add':
+					name, expr = rest.split(' ', 1)
+					add_expr(name, expr)
+		elif event.app.my.input_gdb:
+			cmd = text
 			if not len(cmd): cmd = event.app.my.last_gdb_cmd
 			else: event.app.my.last_gdb_cmd = cmd
 			run_gdb_cmd(event.app, cmd)
-			if event.app.my.controls['input'].content.buffer.text == 'q':
+			if text == 'q':
 				event.app.exit()
 		else:
-			try: app.my.console.runsource(event.app.my.controls['input'].content.buffer.text)
+			try: app.my.console.runsource(text)
 			except Exception as e:
 				import traceback
 				add_gdbview_text(event.app, traceback.format_exc())
@@ -639,10 +656,12 @@ def setup_app(gdb):
 			app.my.control_to_name_mapping[controls[name].content] = name
 
 	app.my.locals = OrderedDict()
+	app.my.exprs = OrderedDict()
+	app.my.exprs_dict = dict()
 	app.my.gdb = gdb
 	app.my.last_gdb_cmd = ''
 	app.my.input_gdb = True
-	app.my.focus_list = ['input', 'codeview', 'inferiorout', 'gdbout', 'locals']
+	app.my.focus_list = ['input', 'codeview', 'inferiorout', 'gdbout', 'locals', 'exprs']
 	app.my.focused_control = 'input'
 	def _set_focus(ctrl_or_name):
 		if isinstance(ctrl_or_name, six.text_type):
@@ -671,7 +690,8 @@ def setup_app(gdb):
 			self.buffer.cursor_position = index
 		else: return NotImplemented
 	for x in app.my.focus_list:
-		if x == 'locals': continue #don't override custom mouse handler
+		if isinstance(app.my.controls[x], Window) and isinstance(app.my.controls[x].content, SidebarControl):
+			continue #don't override custom mouse handler
 		if isinstance(app.my.controls[x], TextArea):
 			app.my.controls[x].control.mouse_handler = my_mouse_handler.__get__(app.my.controls[x].control)
 		else:
@@ -732,6 +752,7 @@ def run_gdb_cmd(app, cmd, hide=False):
 		codeview_set_line(app.my.controls['codeview'], app.my.gdb.lineno)
 	if cmd in _STEP_COMMANDS:
 		get_locals(app)
+		get_exprs(app)
 		app.my.controls['vardetails'].update()
 	return s,t
 
@@ -779,6 +800,20 @@ def get_locals(app):
 				mv= '<OOB>'
 			mylocals[k] = (mv, v)
 	app.my.locals.update(mylocals)
+
+def get_exprs(app):
+	mylocals = dict()
+	for k in app.my.exprs_dict:
+		app.my.gdb.send(app.my.exprs_dict[k])
+		s = app.my.gdb.proc.read_until(app.my.gdb.proc.stdout(), '(gdb) ')
+		s = s.replace('\n(gdb) ', '')
+		if len(s) > 5 and s[0] == '$' and isnumeric(s[1]):
+			i = 2
+			while i < len(s) and isnumeric(s[i]): i += 1
+			if i + 2 < len(s) and s[i] == ' ' and s[i+1] == '=' and s[i+2] == ' ':
+				s = s.split(' = ', 1)[1]
+		mylocals[k] = (s, s)
+	app.my.exprs.update(mylocals)
 
 def scroll_down(control):
 	set_lineno(control, count_char(control.text, '\n')+1)
