@@ -448,7 +448,7 @@ def setup_app(gdb):
 		text = u'',
 		read_only = True,
 		scrollbar = True,
-		wrap_lines = False,
+		wrap_lines = True,
 		style = u'class:gdbout',
 		height = LayoutDimension(4, 16, preferred=8),
 		focusable = True,
