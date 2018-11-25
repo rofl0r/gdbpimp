@@ -12,6 +12,7 @@ class GDB():
 		self.command = command
 		self.proc = Proc("LC_ALL=C gdb --args " + command, shell=True)
 		self.debugf = open('debug.log', 'w')
+		self.compilation_directory = ''
 		self.sourcefile = ''
 		self.sources = []
 		self.breakpoints = {}
@@ -44,14 +45,18 @@ class GDB():
 		lines = s.split('\n')
 		self.sources = lines[2].split(', ')
 	def set_sourcefile(self, file):
+		if len(file) and not file.startswith('/'):
+			file = self.compilation_directory + '/' + file
 		self.sourcefile = file
 	def find_sourcefile(self, file):
-		if not extract_filename(self.sourcefile) == file:
+		if len(file) and not file.startswith('/'):
+			file = self.compilation_directory + '/' + file
+		if not self.sourcefile == file:
 			self._reload_sources()
 			for s in self.sources:
-				if extract_filename(s) == file:
+				if s == file:
 					return s
-			return ''
+			assert(0)
 		else: return self.sourcefile
 
 	def _consume_cached(self, which):
@@ -135,7 +140,8 @@ class GDB():
 		for x in a:
 			if x.startswith('Located in '):
 				self.sourcefile = x[len('Located in '):]
-				break
+			elif x.startswith('Compilation directory is '):
+				self.compilation_directory = x[len('Compilation directory is '):]
 		return self.sourcefile
 
 
