@@ -767,13 +767,14 @@ def codeview_set_line(ctrl, lineno):
 	direction = -1 if lineno < fl else 1
 	scroll_to(ctrl, lineno + (height/2)*direction)
 
-_STEP_COMMANDS = ['n','s','c','next','step','continue']
+_STEP_COMMANDS = ['n','s','c','r','next','step','continue','run']
 def run_gdb_cmd(app, cmd, hide=False):
 	oldsrc = app.my.gdb.sourcefile
 	app.my.gdb.send(cmd)
 	s, t = app.my.gdb.read()
 	if not hide: add_gdbview_text(app, s + t)
-	if cmd in _STEP_COMMANDS:
+	cmd0 = cmd if not ' ' in cmd else cmd.split(' ')[0]
+	if cmd0 in _STEP_COMMANDS:
 		for line in s.split('\n'):
 			a = line.replace('\t', ' ').split(' ')
 			if isnumeric(a[0]): app.my.gdb.lineno = int(a[0])
@@ -789,7 +790,7 @@ def run_gdb_cmd(app, cmd, hide=False):
 		load_source(app)
 	if not cmd.startswith('b ') and app.my.gdb.lineno != -1:
 		codeview_set_line(app.my.controls['codeview'], app.my.gdb.lineno)
-	if cmd in _STEP_COMMANDS:
+	if cmd0 in _STEP_COMMANDS:
 		get_locals(app)
 		get_exprs(app)
 		app.my.controls['vardetails'].update()
