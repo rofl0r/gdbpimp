@@ -827,6 +827,7 @@ def get_locals(app):
 			k, v = line.split(' = ', 1)
 			b = tokenizer.split_tokens(v)
 			mv = b[-1]
+			if mv.startswith('times>'): mv = b[0]
 			if mv[0] == "'" and len(mv) > 3: # turn gdb's gay octal literals into hex
 				charval = mv[1:-1]
 				if charval[0] == '\\' and isnumeric(charval[1]):
